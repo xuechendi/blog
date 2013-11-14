@@ -5,6 +5,7 @@ footer: false
 ---
 
 <div id="blog-archives">
+<div style="float:left;width:80%">
 {% for post in site.posts reverse %}
 {% capture this_year %}{{ post.date | date: "%Y" }}{% endcapture %}
 {% unless year == this_year %}
@@ -15,4 +16,8 @@ footer: false
   {% include archive_post.html %}
 </article>
 {% endfor %}
+</div>
+<div style="float:left;width:20%">
+{% include asides/category_list.html %}
+</div>
 </div>
