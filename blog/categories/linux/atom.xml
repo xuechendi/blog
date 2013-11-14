@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Linux | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-14T19:52:52+08:00</updated>
+  <updated>2013-11-14T21:23:47+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -18,7 +18,41 @@
     <link href="http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/"/>
     <updated>2013-11-14T19:40:00+08:00</updated>
     <id>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive</id>
-    <content type="html"><![CDATA[<p>Working in progress, comming soon</p>
+    <content type="html"><![CDATA[<p>I stucked in all these terms and concepts for like really long time, just trying to get everything clear by writing.</p>
+
+<h2>Storage subsystem</h2>
+
+<h3>Overview</h3>
+
+<p><img src="/images/dm_deep_dive/overview.png" alt="overview" width=80%></p>
+
+<p>BIO is the unit to map data in the memory to generic block offset.
+When generic block layer gets bio units, it calls io scheduler to combine bios into request to specific device.
+Then requests can be sent to real device or virtual block device like software raid or logic volume(using MD or Device Mapper modules).</p>
+
+<p><img src="/images/dm_deep_dive/bio.png" alt="overview" width=80%></p>
+
+<p>Actually BIO units point to a much smaller unit named bio_vec which is the exactly unit point to the memory, and BIO also has one field record which block device and which sector it wanna to read/write.(Notice, the block device here is kind of a generic idea, could be some virtual block device)</p>
+
+<p>The smart use of bio_vec help kernel to support scatter/Gather I/O, so that BIO can map some scatter part in mem to some continuous part in block device.</p>
+
+<p><img src="/images/dm_deep_dive/request.png" alt="overview" width=80%></p>
+
+<p>When BIO unit received by generic block layer, kernel will do some &ldquo;merge and sort&rdquo; operations then hand the combined BIOs to block device. All these work can be done in the IO scheduler layer and then all BIO units are combined into one and one request, which also be linked by a pointer named &ldquo;request_queue&rdquo; store in bdev struct(gendisk).</p>
+
+<p><img src="/images/dm_deep_dive/functions.png" alt="overview" width=50%></p>
+
+<p>This picture shows the functions which help to translate a fs syscall into requests to block devices.</p>
+
+<h3>BIO &amp; Request</h3>
+
+<h2>Device-Mapper</h2>
+
+<h3>Overview &amp; Usecase</h3>
+
+<h3>Structure</h3>
+
+<h3>DM devices</h3>
 ]]></content>
   </entry>
   
