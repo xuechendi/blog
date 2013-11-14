@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-13T16:50:54+08:00</updated>
+  <updated>2013-11-14T11:17:40+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -12,6 +12,17 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[aboutme]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/14/aboutme/"/>
+    <updated>2013-11-14T11:01:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/14/aboutme</id>
+    <content type="html"><![CDATA[<p>Hi, This is Chendi.Xue, a girl from China and have huge interest in Storage.
+I am building this website to share stuff I am into.
+Please feel free to contact me in any reason ~</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[First post to Octopress]]></title>
