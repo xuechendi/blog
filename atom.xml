@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-14T11:27:59+08:00</updated>
+  <updated>2013-11-14T15:26:41+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -12,6 +12,168 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[resume]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/14/resume/"/>
+    <updated>2013-11-14T14:08:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/14/resume</id>
+    <content type="html"><![CDATA[<h1>Xue Chendi (薛晨笛)</h1>
+
+
+<h3>0086-18600035546; xuechendi@gmail.com</h3>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>SKILLS</h2>
+
+
+<ul>
+    <li>Linux kernel/module programming experience</li>
+    <li>PHP-based website development experience</li>
+    <li>Familiar with block-level storage subsystem (iSCSI and Device-Mapper) </li>
+    <li>Linux system operating maintenance experience</li>
+    <li>CET-6(556)、IELTS(6.5)</li>
+</ul>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>EDUCATION</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2011.9 - Present</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>Communication University of China</li>
+            <li>Masters of Computer software and theory</li>
+            <li>Concentration in Distributed storage, ranking 1st at first year&#8217;s courses learning</li>
+        </ul>
+    </div>
+    <div style="width:20%;">2007.9 - 2011.7</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>Communication University of China</li>
+            <li>Major in computer science and technology with GPA of 3.61.</li>
+            <li>Minor in Digital Art, college of Animation.</li>
+        </ul>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>PROJECT EXPERIENCE</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2011.7 - Present</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>Low energy-consuming storage devices development and industrialization</li>
+            <li>National science and technology support program(2011BAH04B05)</li>
+            <li>Develop a storage management system based on B/S architecture to integrate main Linux storage APIs and also do some optimization to help system administrators to setup raid, LV,iSCSI devices, FC devices, NFS, and CIFS, also manage basic service operations.</li>
+        </ul>
+    </div>
+    <div style="width:20%;">2010.1 - 2011.6</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>Research of semantic storage system for MP3</li>
+            <li>National undergraduate innovation project</li>
+            <li>Develop a system that stores MP3 files and metadata separately, then uses metadata/tags to build a RDF triples that can do semantic search of files. In order to optimise the search speed, the system also uses the fast-page mechanism.</li>
+        </ul>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>ACADEMIC ACHEIVEMENT</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2013</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>《The Optimization of network link aggregation for iSCSI》</li>
+            <li>As the first and primary author</li>
+            <li>Accepted by The 19th National Conference of Information Storage 2013</li>
+        </ul>
+    </div>
+    <div style="width:20%;">2011</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>《Research of semantic storage system for MP3》</li>
+            <li>As the first and primary author</li>
+            <li>IEEE Digital Object Identifier: 10.1109/CECNET.2011.5768656</li>
+        </ul>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>INTERNSHIP</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2013</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>INTEL R&D CENTER , SSG/SOTC</li>
+            <li>Daily work mainly concentrate on CEPH testing and tuning</li>
+            <li>Community contribution mainly focus on Openstack-cinder</li>
+        </ul>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>SCHOOL ACTIVITY</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2008</div>
+    <div style="width:80%;padding-left:5%;">
+        <li>Leader of Part-time Job Service Propaganda Department</li>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[aboutme]]></title>
