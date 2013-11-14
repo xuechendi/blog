@@ -1,11 +1,16 @@
 #archive {
   #content > div { &, > article { padding-top: 0; } }
 }
+
+.archives {
+  min-width: 100px;
+}
+
 #blog-archives {
+  font-size: 12px;
   article {
     padding: 1em 0 1em;
     position: relative;
-    background: $img-border bottom left repeat-x;
     &:last-child {
       background: none;
     }
