@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-14T18:24:28+08:00</updated>
+  <updated>2013-11-14T19:52:52+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -12,6 +12,15 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Device-Mapper deep dive]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/"/>
+    <updated>2013-11-14T19:40:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive</id>
+    <content type="html"><![CDATA[<p>Working in progress, comming soon</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[resume]]></title>

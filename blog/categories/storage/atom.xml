@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Storage | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/storage/atom.xml" rel="self"/>
+  <link href="http://xuechendi.github.io/"/>
+  <updated>2013-11-14T19:52:52+08:00</updated>
+  <id>http://xuechendi.github.io/</id>
+  <author>
+    <name><![CDATA[Chendi.Xue]]></name>
+    <email><![CDATA[xuechendi@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Device-Mapper deep dive]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/"/>
+    <updated>2013-11-14T19:40:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive</id>
+    <content type="html"><![CDATA[<p>Working in progress, comming soon</p>
+]]></content>
+  </entry>
+  
+</feed>
