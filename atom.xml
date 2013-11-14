@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-14T21:23:47+08:00</updated>
+  <updated>2013-11-14T23:11:54+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -18,7 +18,7 @@
     <link href="http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/"/>
     <updated>2013-11-14T19:40:00+08:00</updated>
     <id>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive</id>
-    <content type="html"><![CDATA[<p>I stucked in all these terms and concepts for like really long time, just trying to get everything clear by writing.</p>
+    <content type="html"><![CDATA[<p>I used to stuck in all these terms and concepts for like really long time, just trying to get everything clear by writing.</p>
 
 <h2>Storage subsystem</h2>
 
@@ -30,29 +30,145 @@
 When generic block layer gets bio units, it calls io scheduler to combine bios into request to specific device.
 Then requests can be sent to real device or virtual block device like software raid or logic volume(using MD or Device Mapper modules).</p>
 
-<p><img src="http://xuechendi.github.io/images/dm_deep_dive/bio.png" alt="overview" width=80%></p>
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/bio.png" alt="bio" width=80%></p>
 
 <p>Actually BIO units point to a much smaller unit named bio_vec which is the exactly unit point to the memory, and BIO also has one field record which block device and which sector it wanna to read/write.(Notice, the block device here is kind of a generic idea, could be some virtual block device)</p>
 
 <p>The smart use of bio_vec help kernel to support scatter/Gather I/O, so that BIO can map some scatter part in mem to some continuous part in block device.</p>
 
-<p><img src="http://xuechendi.github.io/images/dm_deep_dive/request.png" alt="overview" width=80%></p>
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/request.png" alt="request" width=80%></p>
 
 <p>When BIO unit received by generic block layer, kernel will do some &ldquo;merge and sort&rdquo; operations then hand the combined BIOs to block device. All these work can be done in the IO scheduler layer and then all BIO units are combined into one and one request, which also be linked by a pointer named &ldquo;request_queue&rdquo; store in bdev struct(gendisk).</p>
 
-<p><img src="http://xuechendi.github.io/images/dm_deep_dive/functions.png" alt="overview" width=50%></p>
+<p>Then the whole idea is pretty clear, there is a picture shows some important function to translate a fs syscall into requests to block devices.</p>
 
-<p>This picture shows the functions which help to translate a fs syscall into requests to block devices.</p>
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/functions.png" alt="functions" width=50%></p>
 
-<h3>BIO &amp; Request</h3>
+<p>Submit_bio is a generic api to submit bio to generic block layer(of course by its name&hellip;)</p>
 
-<h2>Device-Mapper</h2>
+<p>generic_make_request puts BIO into bio_list, then __generic_make_request will see if this bio is suitable to make request or it is delivered to some stack device like Device Mapper(in this situation, __generic_make_request will produce a new bio and call generic_make_request).</p>
 
-<h3>Overview &amp; Usecase</h3>
+<p>__make_request_fn() then pus BIO into request_queue, if this function returns 0, the BIO is delivered to the real block device, or it may continues to call __make_request_fn until it delivered to real block device(like Device Mapper).</p>
 
-<h3>Structure</h3>
+<p>In fact, the request_queue also will not be directly tackled by block device, the device will use some method named &ldquo;Plugging/Unplugging&rdquo; to tackles these requests.</p>
 
-<h3>DM devices</h3>
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/structures.png" alt="structures" width=50%></p>
+
+<p>Now let&rsquo;s see a linked graph of some important structs in block-level subsystem. Every block device has a field named gendisk(generic disk), and generic disk has a field to record its request_queue, and since each type of block device has its own implementation of read and write, the gendisk also has a field named private_data to point to the corresponding block device(also, the block device can be real or virtual).</p>
+
+<h2>Then, after all the general idea of block-layer subsystem, let&rsquo;s talk about <code>Device Mapper</code></h2>
+
+<h3>What is Device-Mapper</h3>
+
+<ul>
+<li>A block device mapping facility available in Linux Kernel.</li>
+<li>A component required by LVM2 to support the mapping between logical volumes and physical storage devices.</li>
+<li>Device-mapper provides a generic way to create virtual layers of block devices that can do different things on top of real block devices like striping, concatenation, mirroring, snapshotting, etc&hellip;</li>
+</ul>
+
+
+<h3>Here is the Usecase</h3>
+
+<p>Before lv creation</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/Before lv creation.png" alt="Before lv creation" width=40%></p>
+
+<p>After lv creation</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/after lv creation.png" alt="after lv creation" width=40%></p>
+
+<p>The thing should notice here is that a dm-0 device in /sys/block is created, which indicates that Logic Volume is a &ldquo;device mapper&rdquo; device.</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/after lv creation2.png" alt="after lv creation" width=40%></p>
+
+<h3>another device mapper usecase</h3>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/after lv creation2.png" alt="after lv creation" width=40%></p>
+
+<h3>Here is the Device Mapper Overview</h3>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/dm_overview.png" alt="dm_overview" width=50%></p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/dm_struct.png" alt="dm_struct" width=50%></p>
+
+<p>DM Devices in Ubuntu 12.10,kernel 3.6.3</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/dm_targets.png" alt="dm_targets" width=50%></p>
+
+<p>Linear Device target-type example</p>
+
+<figure class='code'><figcaption><span>linear-device-struct</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="k">struct</span> <span class="n">target_type</span> <span class="n">linear_target</span> <span class="o">=</span> <span class="p">{</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">name</span><span class="err">   </span><span class="o">=</span> <span class="s">&quot;linear&quot;</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">version</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">},</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">module</span> <span class="o">=</span> <span class="n">THIS_MODULE</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">ctr</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_ctr</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">dtr</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_dtr</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">map</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_map</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">linear_status</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">ioctl</span><span class="err">  </span><span class="o">=</span> <span class="n">linear_ioctl</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">merge</span><span class="err">  </span><span class="o">=</span> <span class="n">linear_merge</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">iterate_devices</span> <span class="o">=</span> <span class="n">linear_iterate_devices</span><span class="p">,</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Let&rsquo;s see the codes</h3>
+
+<figure class='code'><figcaption><span>How DM handle the device creation command?</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">int</span> <span class="nf">dm_create</span><span class="p">(</span><span class="kt">int</span> <span class="n">minor</span><span class="p">,</span> <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">**</span><span class="n">result</span><span class="p">){</span>
+</span><span class='line'><span class="err">   </span>   <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">*</span><span class="n">md</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">md</span> <span class="o">=</span> <span class="n">alloc_dev</span><span class="p">(</span><span class="n">minor</span><span class="p">);</span><span class="err">   </span> 
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">md</span><span class="p">)</span><span class="err">       </span>      
+</span><span class='line'>      <span class="k">return</span> <span class="o">-</span><span class="n">ENXIO</span><span class="p">;</span><span class="err"> </span>   
+</span><span class='line'>  <span class="n">dm_sysfs_init</span><span class="p">(</span><span class="n">md</span><span class="p">);</span><span class="err">   </span>   
+</span><span class='line'>  <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="n">md</span><span class="p">;</span><span class="err">   </span> 
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>How DM handle the read/write command? </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">dm_request</span><span class="p">(</span><span class="k">struct</span> <span class="n">request_queue</span> <span class="o">*</span><span class="n">q</span><span class="p">,</span> <span class="k">struct</span> <span class="n">bio</span> <span class="o">*</span><span class="n">bio</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">*</span><span class="n">md</span> <span class="o">=</span> <span class="n">q</span><span class="o">-&gt;</span><span class="n">queuedata</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">dm_request_based</span><span class="p">(</span><span class="n">md</span><span class="p">))</span>
+</span><span class='line'>      <span class="n">blk_queue_bio</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">bio</span><span class="p">);</span>  <span class="c1">//Using dm_target rules to reconstruct the bio</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>      <span class="n">_dm_request</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">bio</span><span class="p">);</span>    <span class="c1">//split and process this bio</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
 ]]></content>
   </entry>
   

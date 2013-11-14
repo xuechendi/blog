@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Storage | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/storage/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-14T21:23:47+08:00</updated>
+  <updated>2013-11-14T23:11:54+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -18,7 +18,7 @@
     <link href="http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/"/>
     <updated>2013-11-14T19:40:00+08:00</updated>
     <id>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive</id>
-    <content type="html"><![CDATA[<p>I stucked in all these terms and concepts for like really long time, just trying to get everything clear by writing.</p>
+    <content type="html"><![CDATA[<p>I used to stuck in all these terms and concepts for like really long time, just trying to get everything clear by writing.</p>
 
 <h2>Storage subsystem</h2>
 
@@ -30,29 +30,122 @@
 When generic block layer gets bio units, it calls io scheduler to combine bios into request to specific device.
 Then requests can be sent to real device or virtual block device like software raid or logic volume(using MD or Device Mapper modules).</p>
 
-<p><img src="/images/dm_deep_dive/bio.png" alt="overview" width=80%></p>
+<p><img src="/images/dm_deep_dive/bio.png" alt="bio" width=80%></p>
 
 <p>Actually BIO units point to a much smaller unit named bio_vec which is the exactly unit point to the memory, and BIO also has one field record which block device and which sector it wanna to read/write.(Notice, the block device here is kind of a generic idea, could be some virtual block device)</p>
 
 <p>The smart use of bio_vec help kernel to support scatter/Gather I/O, so that BIO can map some scatter part in mem to some continuous part in block device.</p>
 
-<p><img src="/images/dm_deep_dive/request.png" alt="overview" width=80%></p>
+<p><img src="/images/dm_deep_dive/request.png" alt="request" width=80%></p>
 
 <p>When BIO unit received by generic block layer, kernel will do some &ldquo;merge and sort&rdquo; operations then hand the combined BIOs to block device. All these work can be done in the IO scheduler layer and then all BIO units are combined into one and one request, which also be linked by a pointer named &ldquo;request_queue&rdquo; store in bdev struct(gendisk).</p>
 
-<p><img src="/images/dm_deep_dive/functions.png" alt="overview" width=50%></p>
+<p>Then the whole idea is pretty clear, there is a picture shows some important function to translate a fs syscall into requests to block devices.</p>
 
-<p>This picture shows the functions which help to translate a fs syscall into requests to block devices.</p>
+<p><img src="/images/dm_deep_dive/functions.png" alt="functions" width=50%></p>
 
-<h3>BIO &amp; Request</h3>
+<p>Submit_bio is a generic api to submit bio to generic block layer(of course by its name&hellip;)</p>
 
-<h2>Device-Mapper</h2>
+<p>generic_make_request puts BIO into bio_list, then __generic_make_request will see if this bio is suitable to make request or it is delivered to some stack device like Device Mapper(in this situation, __generic_make_request will produce a new bio and call generic_make_request).</p>
 
-<h3>Overview &amp; Usecase</h3>
+<p>__make_request_fn() then pus BIO into request_queue, if this function returns 0, the BIO is delivered to the real block device, or it may continues to call __make_request_fn until it delivered to real block device(like Device Mapper).</p>
 
-<h3>Structure</h3>
+<p>In fact, the request_queue also will not be directly tackled by block device, the device will use some method named &ldquo;Plugging/Unplugging&rdquo; to tackles these requests.</p>
 
-<h3>DM devices</h3>
+<p><img src="/images/dm_deep_dive/structures.png" alt="structures" width=50%></p>
+
+<p>Now let&rsquo;s see a linked graph of some important structs in block-level subsystem. Every block device has a field named gendisk(generic disk), and generic disk has a field to record its request_queue, and since each type of block device has its own implementation of read and write, the gendisk also has a field named private_data to point to the corresponding block device(also, the block device can be real or virtual).</p>
+
+<h2>Then, after all the general idea of block-layer subsystem, let&rsquo;s talk about <code>Device Mapper</code></h2>
+
+<h3>What is Device-Mapper</h3>
+
+<ul>
+<li>A block device mapping facility available in Linux Kernel.</li>
+<li>A component required by LVM2 to support the mapping between logical volumes and physical storage devices.</li>
+<li>Device-mapper provides a generic way to create virtual layers of block devices that can do different things on top of real block devices like striping, concatenation, mirroring, snapshotting, etc&hellip;</li>
+</ul>
+
+
+<h3>Here is the Usecase</h3>
+
+<p>Before lv creation</p>
+
+<p><img src="/images/dm_deep_dive/Before lv creation.png" alt="Before lv creation" width=40%></p>
+
+<p>After lv creation</p>
+
+<p><img src="/images/dm_deep_dive/after lv creation.png" alt="after lv creation" width=40%></p>
+
+<p>The thing should notice here is that a dm-0 device in /sys/block is created, which indicates that Logic Volume is a &ldquo;device mapper&rdquo; device.</p>
+
+<p><img src="/images/dm_deep_dive/after lv creation2.png" alt="after lv creation" width=40%></p>
+
+<h3>another device mapper usecase</h3>
+
+<p><img src="/images/dm_deep_dive/after lv creation2.png" alt="after lv creation" width=40%></p>
+
+<h3>Here is the Device Mapper Overview</h3>
+
+<p><img src="/images/dm_deep_dive/dm_overview.png" alt="dm_overview" width=50%></p>
+
+<p><img src="/images/dm_deep_dive/dm_struct.png" alt="dm_struct" width=50%></p>
+
+<p>DM Devices in Ubuntu 12.10,kernel 3.6.3</p>
+
+<p><img src="/images/dm_deep_dive/dm_targets.png" alt="dm_targets" width=50%></p>
+
+<p>Linear Device target-type example</p>
+
+<p>``` c linear-device-struct
+static struct target_type linear_target = {   </p>
+
+<pre><code>.name   = "linear",   
+.version = {1, 1, 0},   
+.module = THIS_MODULE,   
+.ctr    = linear_ctr,   
+.dtr    = linear_dtr,   
+.map    = linear_map,   
+.status = linear_status,   
+.ioctl  = linear_ioctl,   
+.merge  = linear_merge,   
+.iterate_devices = linear_iterate_devices,
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>Let&rsquo;s see the codes</h3>
+
+<p>``` c How DM handle the device creation command?
+int dm_create(int minor, struct mapped_device <em>*result){
+     struct mapped_device </em>md;</p>
+
+<pre><code>    md = alloc_dev(minor);       
+if (!md)             
+    return -ENXIO;     
+dm_sysfs_init(md);       
+*result = md;    
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>``` c How DM handle the read/write command?
+static void dm_request(struct request_queue <em>q, struct bio </em>bio)
+{</p>
+
+<pre><code>struct mapped_device *md = q-&gt;queuedata;
+
+if (dm_request_based(md))
+    blk_queue_bio(q, bio);  //Using dm_target rules to reconstruct the bio
+else
+    _dm_request(q, bio);    //split and process this bio
+</code></pre>
+
+<p>}
+```</p>
 ]]></content>
   </entry>
   
