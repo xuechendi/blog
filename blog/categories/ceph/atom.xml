@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Ceph | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/ceph/atom.xml" rel="self"/>
+  <link href="http://xuechendi.github.io/"/>
+  <updated>2013-11-15T01:24:39+08:00</updated>
+  <id>http://xuechendi.github.io/</id>
+  <author>
+    <name><![CDATA[Chendi.Xue]]></name>
+    <email><![CDATA[xuechendi@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[How to break into Ceph Codes]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes/"/>
+    <updated>2013-11-15T01:00:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes</id>
+    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this weekend</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ObjectCacher: RBD Cache Codes]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes/"/>
+    <updated>2013-11-15T00:58:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes</id>
+    <content type="html"><![CDATA[<p>Working in Progress, will be finished by next tuesday</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Study of Data distribution methods--Crush]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method/"/>
+    <updated>2013-11-15T00:51:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method</id>
+    <content type="html"><![CDATA[<p>wanna learn, mark here</p>
+]]></content>
+  </entry>
+  
+</feed>
