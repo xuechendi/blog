@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: Ceph | XueChendi]]></title>
-  <link href="http://xuechendi.github.io/blog/categories/ceph/atom.xml" rel="self"/>
+  <title><![CDATA[Category: unfinished | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/unfinished/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
   <updated>2013-11-15T09:17:18+08:00</updated>
   <id>http://xuechendi.github.io/</id>
@@ -12,6 +12,15 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[AIO-STRESS vs. FIO]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio/"/>
+    <updated>2013-11-15T01:05:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio</id>
+    <content type="html"><![CDATA[<p>working in progress&hellip;</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[How to break into Ceph Codes]]></title>
@@ -28,6 +37,15 @@
     <updated>2013-11-15T00:58:00+08:00</updated>
     <id>http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes</id>
     <content type="html"><![CDATA[<p>Working in Progress, will be finished by next tuesday</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Cache &amp; Consistency]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/cache-and-consistency/"/>
+    <updated>2013-11-15T00:55:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/cache-and-consistency</id>
+    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this week</p>
 ]]></content>
   </entry>
   
