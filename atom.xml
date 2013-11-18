@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-18T14:50:32+08:00</updated>
+  <updated>2013-11-18T16:12:37+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -157,14 +157,14 @@ And it is now in memory cache which supports write through and write back.</p>
 <span class='line-number'>6</span>
 <span class='line-number'>7</span>
 <span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>&lt;disk <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;network&#39;</span> <span class="nv">device</span><span class="o">=</span><span class="s1">&#39;disk&#39;</span>&gt;
-</span><span class='line'>  &lt;driver <span class="nv">name</span><span class="o">=</span><span class="s1">&#39;qemu&#39;</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;raw&#39;</span> <span class="nv">cache</span><span class="o">=</span><span class="s1">&#39;none&#39;</span>/&gt;
-</span><span class='line'>  &lt;<span class="nb">source </span><span class="nv">protocol</span><span class="o">=</span><span class="s1">&#39;rbd&#39;</span> <span class="nv">name</span><span class="o">=</span><span class="s1">&#39;xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_file=/tmp/qemu-rbd.log&#39;</span>/&gt;
-</span><span class='line'>  &lt;target <span class="nv">dev</span><span class="o">=</span><span class="s1">&#39;vdb&#39;</span> <span class="nv">bus</span><span class="o">=</span><span class="s1">&#39;virtio&#39;</span>/&gt;
-</span><span class='line'>  &lt;serial&gt;12f70341-d199-4fca-9270-56e5d6b80061&lt;/serial&gt;
-</span><span class='line'>  &lt;<span class="nb">alias </span><span class="nv">name</span><span class="o">=</span><span class="s1">&#39;virtio-disk1&#39;</span>/&gt;
-</span><span class='line'>  &lt;address <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;pci&#39;</span> <span class="nv">domain</span><span class="o">=</span><span class="s1">&#39;0x0000&#39;</span> <span class="nv">bus</span><span class="o">=</span><span class="s1">&#39;0x00&#39;</span> <span class="nv">slot</span><span class="o">=</span><span class="s1">&#39;0x06&#39;</span> <span class="k">function</span><span class="o">=</span><span class="s1">&#39;0x0&#39;</span>/&gt;
-</span><span class='line'>&lt;/disk&gt;
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&#39;network&#39;</span> <span class="na">device=</span><span class="s">&#39;disk&#39;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;driver</span> <span class="na">name=</span><span class="s">&#39;qemu&#39;</span> <span class="na">type=</span><span class="s">&#39;raw&#39;</span> <span class="na">cache=</span><span class="s">&#39;none&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol=</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_file=/tmp/qemu-rbd.log&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;target</span> <span class="na">dev=</span><span class="s">&#39;vdb&#39;</span> <span class="na">bus=</span><span class="s">&#39;virtio&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;serial&gt;</span>12f70341-d199-4fca-9270-56e5d6b80061<span class="nt">&lt;/serial&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;alias</span> <span class="na">name=</span><span class="s">&#39;virtio-disk1&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;address</span> <span class="na">type=</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot=</span><span class="s">&#39;0x06&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/disk&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
 
@@ -173,7 +173,7 @@ And it is now in memory cache which supports write through and write back.</p>
 <p>After attach this disk, you can find logs in /tmp/qemu-rbd.log or you can just write to qemu log.</p>
 
 <figure class='code'><figcaption><span>write log to</span><a href='http://xuechendi.github.io/var/libvirt/qemu/xxxxx(instance_name).log'>link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'>  &lt;<span class="nb">source </span><span class="nv">protocol</span><span class="o">=</span><span class="s1">&#39;rbd&#39;</span> <span class="nv">name</span><span class="o">=</span><span class="s1">&#39;xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_to_stderr=true&#39;</span>/&gt;
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol=</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_to_stderr=true&#39;</span><span class="nt">/&gt;</span>
 </span></code></pre></td></tr></table></div></figure>
 
 

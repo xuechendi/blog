@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Storage | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/storage/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-18T14:50:32+08:00</updated>
+  <updated>2013-11-18T16:12:37+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -108,7 +108,7 @@ And it is now in memory cache which supports write through and write back.</p>
 
 <p>All you need to do is to add log setting in you instance.xml, then using libvirt to boot this instance or also you can just attach a new disk by using xml like below.</p>
 
-<p>``` bash disk.xml</p>
+<p>``` xml disk.xml</p>
 
 <pre><code>&lt;disk type='network' device='disk'&gt;
   &lt;driver name='qemu' type='raw' cache='none'/&gt;
@@ -124,7 +124,7 @@ And it is now in memory cache which supports write through and write back.</p>
 
 <p>After attach this disk, you can find logs in /tmp/qemu-rbd.log or you can just write to qemu log.</p>
 
-<p>``` bash write log to /var/libvirt/qemu/xxxxx(instance_name).log</p>
+<p>``` xml write log to /var/libvirt/qemu/xxxxx(instance_name).log</p>
 
 <pre><code>  &lt;source protocol='rbd' name='xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_to_stderr=true'/&gt;
 </code></pre>
