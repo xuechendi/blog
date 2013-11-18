@@ -160,7 +160,7 @@ And it is now in memory cache which supports write through and write back.</p>
 <p>If we enable rbd cache in ceph.conf(client side), the ObjectCacher object is created when this rbd image attach to the vm.
 Here is the overview.</p>
 
-<p><img src="/images/RBD_Cache/overview.PNG" width=60%></p>
+<p><img src="/images/RBD_Cache/overview.png" width=60%></p>
 
 <p>From above we can see each RBD has a object to store all information name ImageCtx(image context), so there is only one ObjectCacher in one RBD cache and also different RBD images can not share their cache till now.</p>
 
@@ -168,9 +168,9 @@ Here is the overview.</p>
 
 <p>Then here is a graph to show how ceph using ObjectCacher.</p>
 
-<p><img src="/images/RBD_Cache/workflow_send_req.PNG" width=100%></p>
+<p><img src="/images/RBD_Cache/workflow_send_req.png" width=100%></p>
 
-<p><img src="/images/RBD_Cache/workflow_recv_req.PNG" width=50%></p>
+<p><img src="/images/RBD_Cache/workflow_recv_req.png" width=50%></p>
 </div>
 
 
