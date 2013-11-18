@@ -4,7 +4,7 @@
   <title><![CDATA[Category: unfinished | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/unfinished/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-11-15T11:21:28+08:00</updated>
+  <updated>2013-11-18T13:24:57+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -36,7 +36,61 @@
     <link href="http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes/"/>
     <updated>2013-11-15T00:58:00+08:00</updated>
     <id>http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes</id>
-    <content type="html"><![CDATA[<p>Working in Progress, will be finished by next tuesday</p>
+    <content type="html"><![CDATA[<p>There is some cache mechanism in Ceph RBD.
+And it is now in memory cache which supports write through and write back.</p>
+
+<p>In this post, I would post what I have learnt from ObjectCacher codes.</p>
+
+<h2>How to deploy RBD Cache</h2>
+
+<p>there is a really clear instruction in ceph.com, just linked here <code><a href="http://ceph.com/docs/master/rbd/rbd-config-ref/?highlight=rbd%20cache">Ceph RBD Cache setting</a></code></p>
+
+<h2>How to record log from RBD</h2>
+
+<p>There is a little tricky to record log in RBD sides, because if you simply add the log settings in ceph.conf, you can only get logs when you do something using &ldquo;rbd&rdquo; command, like &ldquo;rbd lspools&rdquo;, etc. So simply adding log settings in ceph.conf(client side) can not help you to get logs from QEMU to librbd, the reason is unknown to me, but I just find a way to walk around this.</p>
+
+<p>All you need to do is to add log setting in you instance.xml, then using libvirt to boot this instance or also you can just attach a new disk by using xml like below.</p>
+
+<p>``` bash disk.xml</p>
+
+<pre><code>&lt;disk type='network' device='disk'&gt;
+  &lt;driver name='qemu' type='raw' cache='none'/&gt;
+  &lt;source protocol='rbd' name='xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_file=/tmp/qemu-rbd.log'/&gt;
+  &lt;target dev='vdb' bus='virtio'/&gt;
+  &lt;serial&gt;12f70341-d199-4fca-9270-56e5d6b80061&lt;/serial&gt;
+  &lt;alias name='virtio-disk1'/&gt;
+  &lt;address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/&gt;
+&lt;/disk&gt;
+</code></pre>
+
+<p>```</p>
+
+<p>After attach this disk, you can find logs in /tmp/qemu-rbd.log or you can just write to qemu log.</p>
+
+<p>``` bash write log to /var/libvirt/qemu/xxxxx(instance_name).log</p>
+
+<pre><code>  &lt;source protocol='rbd' name='xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_to_stderr=true'/&gt;
+</code></pre>
+
+<p>```
+There is a really clear codes path we can find from logs, so just using log to debug or hack into the rbd codes.</p>
+
+<h2>Dig into the codes</h2>
+
+<p>If we enable rbd cache in ceph.conf(client side), the ObjectCacher object is created when this rbd image attach to the vm.
+Here is the overview.</p>
+
+<p><img src="/images/RBD_Cache/overview.PNG" width=60%></p>
+
+<p>From above we can see each RBD has a object to store all information name ImageCtx(image context), so there is only one ObjectCacher in one RBD cache and also different RBD images can not share their cache till now.</p>
+
+<p>ObjectCacher uses poolid, oid(objectid), then offset and length to index cache in memory.</p>
+
+<p>Then here is a graph to show how ceph using ObjectCacher.</p>
+
+<p><img src="/images/RBD_Cache/workflow_send_req.PNG" width=100%></p>
+
+<p><img src="/images/RBD_Cache/workflow_recv_req.PNG" width=50%></p>
 ]]></content>
   </entry>
   
