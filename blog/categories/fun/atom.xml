@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Fun | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/fun/atom.xml" rel="self"/>
+  <link href="http://xuechendi.github.io/"/>
+  <updated>2013-11-18T14:43:37+08:00</updated>
+  <id>http://xuechendi.github.io/</id>
+  <author>
+    <name><![CDATA[Chendi.Xue]]></name>
+    <email><![CDATA[xuechendi@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Just some paitings on Openstack]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/18/just-some-paitings-on-openstack/"/>
+    <updated>2013-11-18T14:27:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/18/just-some-paitings-on-openstack</id>
+    <content type="html"><![CDATA[<p>Since I got my iPad air, just fell in love with drawing stuffs.</p>
+
+<p>Painted in Nov. 5th afternoon after the discussion of &ldquo;Software Define Storage&rdquo;.</p>
+
+<p><img src="/images/Paintings_about_openstack/SDS.PNG" alt="SDS" /></p>
+
+<p>And a draft draw of some Souvenir</p>
+
+<p><img src="/images/Paintings_about_openstack/Openstack_souv.PNG" alt="openstack_souv" /></p>
+]]></content>
+  </entry>
+  
+</feed>
