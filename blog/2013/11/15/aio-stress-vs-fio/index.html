@@ -9,8 +9,7 @@
   <meta name="author" content="Chendi.Xue">
 
   
-  <meta name="description" content="working in progress&hellip;
-">
+  <meta name="description" content="There is no big gap to me in producing workload by AIO-STREE and FIO. Just because I haven&rsquo;t using much more advanced feature in FIO like &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -110,7 +109,74 @@
   </header>
 
 
-<div class="entry-content"><p>working in progress&hellip;</p>
+<div class="entry-content"><p>There is no big gap to me in producing workload by AIO-STREE and FIO.</p>
+
+<p>Just because I haven&rsquo;t using much more advanced feature in FIO like replay trace, and I just using libaio as the driver.</p>
+
+<p>But here, I just wanna show some interesting test to see some behavior by different setting of io_depth and io_batch. And <code>sadly</code> that is just some wrong setting I did before and produced some strange data then I just realized how these settings mean. T_T</p>
+
+<h2>Just follow my lead to see how I found this wrong setting. ^_^</h2>
+
+<p><img src="/images/AIO_vs_FIO/1.png" alt="findings" /></p>
+
+<p>After a loadline test of io_depth setting, I just find the figures flowed some rules, so using qemu logs, I draw above graph. This is a graph recording the io request intervals sending from qemu to librbd, and catched in librbd logs.</p>
+
+<p>As we can see, when we set the queue_depth as 8, the first io request has quite small interval(0.075ms), but the interval between the 8th and 9th io request is pretty long(1.6ms). And if we set the queue_depth as 16, or 32. The burst interval happened just between the 16th to 17th, and 32th to 33th respectively.</p>
+
+<p>So there comes the deduction:
+Queue will send out all requests, then wait the last request completes . After that it starts to send out new queue.</p>
+
+<h2>How to prove it?</h2>
+
+<h3>Methodology:</h3>
+
+<ol>
+<li>. Set queue depth = 64</li>
+<li>. make the 42th request sleep 3s in completion thread</li>
+</ol>
+
+
+<h3>&mdash;> If RBD waits 3s then receives the 65th requests, we can confirm the deduction.</h3>
+
+<h3>How to do this?</h3>
+
+<p>There is a function in librbd named C_AioRead::finish in AioCompletion.cc, so what we need to do is just randomly block this function for 3s, and see what happens.</p>
+
+<p><img src="/images/AIO_vs_FIO/2.png" alt="proving" /></p>
+
+<p>Aha! The results just show as what we expect.</p>
+
+<h3>But there are still 3 possibilities can produce result like this.</h3>
+
+<p>1.Wrong workload setting?
+2.Ceph RBD design ?  if there is some lock in finish thread that blocks the submit thread
+3.Virtio ?</p>
+
+<p>The situation produced by FIO</p>
+
+<p><img src="/images/AIO_vs_FIO/3.png" alt="proving" /></p>
+
+<p>From this graph, we can see the result is really different by using aio-stress, which can help us to exclude last two possibilities. That means we must do some wrong setting in aio-stress or aio-stress just have some wierd strategy design.</p>
+
+<p>Also we can see the difference in logs.</p>
+
+<p><img src="/images/AIO_vs_FIO/4.png" alt="proving" /></p>
+
+<p><code>Here I will add some aio-stress codes digging into soon, just not now~ Sorry</code></p>
+
+<hr>
+
+
+<p>The right setting for random io in aio-stress to act more meet our demand (Here I said random io is because this setting may result in no io merge in sequential io)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">./aio-stress -O -o 3 -i 1 -d 64 -r4k -s 4m /dev/vdb</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="/images/AIO_vs_FIO/5.png" alt="proving" /></p>
+
+<p><img src="/images/AIO_vs_FIO/6.png" alt="proving" /></p>
 </div>
 
 
