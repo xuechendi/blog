@@ -119,7 +119,7 @@
 
 <p><img src="/images/AIO_vs_FIO/1.png" alt="findings" /></p>
 
-<p>After a loadline test of io_depth setting, I just find the figures flowed some rules, so using qemu logs, I draw above graph. This is a graph recording the io request intervals sending from qemu to librbd, and catched in librbd logs.</p>
+<p>After a loadline test of io_depth setting, I just found the figures followed some rules, so using qemu logs, I draw above graph. This is a graph recording the io request intervals sending from qemu to librbd, and catched in librbd logs.</p>
 
 <p>As we can see, when we set the queue_depth as 8, the first io request has quite small interval(0.075ms), but the interval between the 8th and 9th io request is pretty long(1.6ms). And if we set the queue_depth as 16, or 32. The burst interval happened just between the 16th to 17th, and 32th to 33th respectively.</p>
 
