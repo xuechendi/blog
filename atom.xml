@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-12-04T20:58:09+08:00</updated>
+  <updated>2013-12-04T21:00:12+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -22,7 +22,7 @@
 
 <h2>The Overview</h2>
 
-<p><img src="http://xuechendi.github.io/images/ha/IMG_0045.PNG" alt="overview" width=80%></p>
+<p><img src="http://xuechendi.github.io/images/ha/IMG_0045.png" alt="overview" width=80%></p>
 
 <p>Here we have 2 setups, providing both web service for management and iscsi target service.
 What we wanna have is all the LVs in setup1(222.31.76.144) has a mirror in setup2(222.31.76.228) &mdash; so we need DRBD
