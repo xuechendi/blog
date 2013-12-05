@@ -1,0 +1,326 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>How to do Ceph Latency Breakdown - XueChendi</title>
+  <meta name="author" content="Chendi.Xue">
+
+  
+  <meta name="description" content="The Ceph Latency Breakdown process includes 3 steps: 1. Enable Log Configuration or Other performance count mechanism to record the runtime &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="XueChendi" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+
+<body>
+	<div class="container">
+		<aside class="left">
+			<div class="inner-left">
+				<header>
+					<img src="/xuechendi.jpg?s=200" alt="Gravatar of Chendi.Xue " title="Gravatar of Chendi.Xue" class="profilepic" />
+<hgroup>
+  <h1><a href="/">XueChendi</a></h1>
+  
+    <h2 class="subtitle">Keep Simple, Keep Effecient</h2>
+   
+</hgroup>
+
+
+				</header>
+				<footer>
+					<p>
+	<a href="https://facebook.com/xuechendi" class="btn btn-dark">Facebook</a>
+	<a href="http://cn.linkedin.com/pub/chendi-xue/5b/935/b36/" class="btn btn-dark">Linkedin</a>
+</p>
+
+				</footer>
+			</div>
+		</aside>
+    	<section class="right">
+    		<div class="inner-right">
+                        <nav role="navigation">
+                                <ul class="subscription" data-subscription="rss">
+  <li class="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:xuechendi.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/#posts">About Me</a></li>
+  <li><a href="/blog/2013/11/14/resume/">Resume</a></li>
+  <li><a href="/blog/archives">Blog</a></li>
+</ul>
+
+
+                        </nav>
+    			<div id="posts">
+    			  	<article class="post">
+    
+  <header>
+    
+      <h1 class="entry-title">How to Do Ceph Latency Breakdown</h1>
+    
+    
+      <p class="meta">
+        <!--
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-12-05T10:38:00+08:00" pubdate data-updated="true">Dec 5<span>th</span>, 2013</time>-->
+        <!--
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://xuechendi.github.io">Comments</a>
+        -->
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>The Ceph Latency Breakdown process includes 3 steps:</h2>
+
+<h3>1. Enable Log Configuration or Other performance count mechanism to record the runtime infomation.</h3>
+
+<h3>2. Produce the workload and meanwhile dump the perfcounter</h3>
+
+<h3>3. Parse the perfcounter dump data</h3>
+
+<h2>Details:</h2>
+
+<p>In ceph, a perfcounter mechanism has been adopted to do the latency breakdown, and the runtime info can be dumped by the admin_socket is an internal implementation in Ceph.</p>
+
+<p>example:</p>
+
+<p><1> codes</p>
+
+<figure class='code'><figcaption><span>git diff</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">diff</span> <span class="o">--</span><span class="n">git</span> <span class="n">a</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">OSD</span><span class="p">.</span><span class="n">cc</span> <span class="n">b</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">OSD</span><span class="p">.</span><span class="n">cc</span>
+</span><span class='line'><span class="n">index</span> <span class="n">d34bb9c</span><span class="p">.</span><span class="mf">.6</span><span class="n">c308d3</span> <span class="mi">100644</span>
+</span><span class='line'><span class="o">---</span> <span class="n">a</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">OSD</span><span class="p">.</span><span class="n">cc</span>
+</span><span class='line'><span class="o">+++</span> <span class="n">b</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">OSD</span><span class="p">.</span><span class="n">cc</span>
+</span><span class='line'><span class="err">@@</span> <span class="o">-</span><span class="mi">7055</span><span class="p">,</span><span class="mi">10</span> <span class="o">+</span><span class="mi">7055</span><span class="p">,</span><span class="mi">10</span> <span class="err">@@</span> <span class="n">PGRef</span> <span class="n">OSD</span><span class="o">::</span><span class="n">OpWQ</span><span class="o">::</span><span class="n">_dequeue</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">void</span> <span class="n">OSD</span><span class="o">::</span><span class="n">OpWQ</span><span class="o">::</span><span class="n">_process</span><span class="p">(</span><span class="n">PGRef</span> <span class="n">pg</span><span class="p">,</span> <span class="n">ThreadPool</span><span class="o">::</span><span class="n">TPHandle</span> <span class="o">&amp;</span><span class="n">handle</span><span class="p">)</span>
+</span><span class='line'> <span class="p">{</span>
+</span><span class='line'><span class="o">-</span>  <span class="n">utime_t</span> <span class="n">pg_lock_lat</span> <span class="o">=</span> <span class="n">ceph_clock_now</span><span class="p">(</span><span class="n">g_ceph_context</span><span class="p">);</span>
+</span><span class='line'><span class="o">+</span>  <span class="n">utime_t</span> <span class="n">start</span> <span class="o">=</span> <span class="n">ceph_clock_now</span><span class="p">(</span><span class="n">g_ceph_context</span><span class="p">);</span>
+</span><span class='line'>   <span class="n">pg</span><span class="o">-&gt;</span><span class="n">lock_suspend_timeout</span><span class="p">(</span><span class="n">handle</span><span class="p">);</span>
+</span><span class='line'><span class="o">-</span>  <span class="n">pg_lock_lat</span> <span class="o">=</span> <span class="n">ceph_clock_now</span><span class="p">(</span><span class="n">g_ceph_context</span><span class="p">)</span> <span class="o">-</span> <span class="n">pg_lock_lat</span><span class="p">;</span>
+</span><span class='line'><span class="o">-</span>  <span class="n">osd</span><span class="o">-&gt;</span><span class="n">logger</span><span class="o">-&gt;</span><span class="n">tinc</span><span class="p">(</span><span class="n">l_osd_pg_lock_lat</span><span class="p">,</span> <span class="n">pg_lock_lat</span><span class="p">);</span>
+</span><span class='line'><span class="o">+</span>  <span class="n">utime_t</span> <span class="n">end</span> <span class="o">=</span> <span class="n">ceph_clock_now</span><span class="p">(</span><span class="n">g_ceph_context</span><span class="p">);</span>
+</span><span class='line'><span class="o">+</span>  <span class="n">osd</span><span class="o">-&gt;</span><span class="n">logger</span><span class="o">-&gt;</span><span class="n">tinc</span><span class="p">(</span><span class="n">l_osd_pg_lock_lat</span><span class="p">,</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">OpRequestRef</span> <span class="n">op</span><span class="p">;</span>
+</span><span class='line'>   <span class="p">{</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Current Ceph Version only enabled admin_socket in Ceph Cluster Side, so we need to enable it in RBD side.</p>
+
+<p>//XIAOXI,在ImageCTX里面增加的那句代码我找不到了，你如果可以找到发我一下</p>
+
+<p><2> dump the data</p>
+
+<figure class='code'><figcaption><span>ceph.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#Enable the admin_socket in QEMU RBD</span>
+</span><span class='line'>check ceph.conf
+</span><span class='line'><span class="nv">perf</span> <span class="o">=</span> <span class="nb">false</span>
+</span><span class='line'>-&gt;
+</span><span class='line'><span class="c">#perf = false</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>QEMU disk.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&#39;network&#39;</span> <span class="na">device=</span><span class="s">&#39;disk&#39;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;driver</span> <span class="na">name=</span><span class="s">&#39;qemu&#39;</span> <span class="na">type=</span><span class="s">&#39;raw&#39;</span> <span class="na">cache=</span><span class="s">&#39;none&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol=</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xcd_8osd/volume-3:admin_socket=/var/run/ceph/node5_1.asok&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;target</span> <span class="na">dev=</span><span class="s">&#39;vdb&#39;</span> <span class="na">bus=</span><span class="s">&#39;virtio&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;serial&gt;</span>12f70341-d199-4fca-9270-56e5d6b80061<span class="nt">&lt;/serial&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;alias</span> <span class="na">name=</span><span class="s">&#39;virtio-disk1&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;address</span> <span class="na">type=</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot=</span><span class="s">&#39;0x06&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/disk&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">virsh attach instance1 disk.xml</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">ceph --admin-daemon /var/run/ceph/${osd} perf dump &gt;&gt; ${osd}.txt</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<hr>
+
+
+<h2>Below is the summary of all scripts:</h2>
+
+<p><a href ="/downloads/Ceph_Latency_Breakdown_Script.zip"><code style="font-family: 'Fjalla One','Georgia','Helvetica Neue',Arial,sans-serif;font-weight:900;font-size:12px;">download the script</code></a></p>
+
+<h3>Script to mkceph:(in the dir &ldquo;mkceph&rdquo;)</h3>
+
+<p>mkceph_with_pg.sh</p>
+
+<h3>Script to produce workload:(all put in the dir &ldquo;run the test&rdquo;)</h3>
+
+<p><b>run.sh</b>: aim to change the <code>ceph.conf</code> op thread number setting, then restart ceph, vm, and call <code>test.sh</code> to start the test. The test result will then be stored in the path &ldquo;/data/xcd/ceph-CephXCD/run_${id}&rdquo;</p>
+
+<p><b>test.sh</b>: aim to clean run a vm_num loadline test, call <code>mhost-volume-test-xcd.sh</code> to run the actual test</p>
+
+<p><b>mhost-volume-test-xcd.sh</b>: calls <code>clean_cache_on_ceph.sh</code>,<code>check_readahead.sh</code>, <code>volume-test_in_vm.sh</code>, <code>all.fio</code>, <code>volume-test_in_pc.sh</code>, <code>ceph_perf_counter_dump.sh</code>, <code>volume-test_in_ceph.sh</code>, <code>check_cephHealth.sh</code> to run the test(producing workload and collecting runtime system info &amp; ceph info), then collects all the data back to the Node1.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="gp">#</span>example:
+</span><span class='line'><span class="go">./mhost-volume-test-xcd.sh 1 $vm_num 3 4k &quot;vmNum_&quot;$vm_num ${qd} node13_net</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>tip: There is a VM list stored in file &ldquo;node13_net&rdquo;</p>
+
+<h3>Script to parse the data:</h3>
+
+<p><b>getLatbreakdown.sh</b>: aim to parse latency data from <code>*.asok</code> files using <code>post_perf.py</code></p>
+
+<p><b>getResult.sh</b>: aim to parse iostat, mpstat data. It calls <code>post_volume_xcd.sh</code>, <code>post_osd.sh</code>, <code>post_cpu.sh</code>, <code>iostat.sh</code></p>
+</div>
+
+
+</article>
+
+
+        <div class="sharing">
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+
+
+
+<section id="comments">
+    <div id="disqus_thread"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+
+    			</div>
+    			<footer id="footer">
+    				<p class="credit">
+  Copyright &copy; 2013 - Chendi.Xue. Powered by <a href="http://octopress.org">Octopress</a>
+</p>
+
+
+    			</footer>
+    			
+
+<script type="text/javascript">
+      var disqus_shortname = 'XueChendi';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown/';
+        var disqus_url = 'http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+
+
+
+<link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+
+
+
+
+    		</div>
+    	</section>
+  	</div>
+</body>
+</html>

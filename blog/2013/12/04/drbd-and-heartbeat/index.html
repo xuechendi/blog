@@ -115,16 +115,24 @@
 
 <p><img src="/images/HA/IMG_0045.PNG" alt="overview" width=80%></p>
 
-<p>Here we have 2 setups, providing both web service for management and iscsi target service.
-What we wanna have is all the LVs in setup1(222.31.76.144) has a mirror in setup2(222.31.76.228) &mdash; so we need DRBD
-Then we use LV1 as lun0 to provide iscsi disk to client1, all client1 knows is that his iscsi target provider&rsquo;s ip address is 222.31.76.250(may be setup1 or setup2) &mdash; so we need heartbeat. Basically, setup1 will response to the client&rsquo;s request, only when setup&rsquo;s eth0 nic doesn&rsquo;t work(this will happen when setup1 is down), setup2 will continue to provide web service and iscsi service.</p>
+<p>Here we have 2 setups, providing both web service for management and iscsi target service.</p>
+
+<p>What we wanna have is all the LVs in setup1(222.31.76.144) has a mirror in setup2(222.31.76.228) &mdash; so we need DRBD</p>
+
+<p>Then we use LV1 as lun0 to provide iscsi disk to client1, all client1 knows is that his iscsi target provider&rsquo;s ip address is 222.31.76.250(may be setup1 or setup2) &mdash; so we need heartbeat.</p>
+
+<p>Basically, setup1 will response to the client&rsquo;s request, only when setup&rsquo;s eth0 nic doesn&rsquo;t work(this will happen when setup1 is down), setup2 will continue to provide web service and iscsi service.</p>
 
 <p>Ok, another problem, when we need setup2 can continue to provide iscsi service, we need disks in setup to can also be the primary node in drbd semantic, so when data written to setup2, data can be sync to setup1.</p>
 
-<p>Let&rsquo;s just summary all the requirement here:
-1. Using heartbeat to provide a virtual ip 222.31.76.250 and watch the liveness of both setups.
-2. Using DRBD to sync LVs in setup1 and setup2, the syncronization can be both sides(dual primary).
-3. Need to keep in mind, when the sync link(eth0,192.168.1.*) breaks, there will be a split brain situation in our DRBD setting, so we need to record who is the latest iscsi target provider and use that one to recover the DRBD setting.</p>
+<p>Let&rsquo;s just summary all the requirement here:</p>
+
+<ol>
+<li><p>Using heartbeat to provide a virtual ip 222.31.76.250 and watch the liveness of both setups.</p></li>
+<li><p>Using DRBD to sync LVs in setup1 and setup2, the syncronization can be both sides(dual primary).</p></li>
+<li><p>Need to keep in mind, when the sync link(eth0,192.168.1.*) breaks, there will be a split brain situation in our DRBD setting, so we need to record who is the latest iscsi target provider and use that one to recover the DRBD setting.</p></li>
+</ol>
+
 
 <h2>DRBD setting</h2>
 

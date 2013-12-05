@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-12-04T21:29:29+08:00</updated>
+  <updated>2013-12-05T13:56:35+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -12,6 +12,151 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[How to do Ceph Latency Breakdown]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown/"/>
+    <updated>2013-12-05T10:38:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown</id>
+    <content type="html"><![CDATA[<h2>The Ceph Latency Breakdown process includes 3 steps:</h2>
+
+<h3>1. Enable Log Configuration or Other performance count mechanism to record the runtime infomation.</h3>
+
+<h3>2. Produce the workload and meanwhile dump the perfcounter</h3>
+
+<h3>3. Parse the perfcounter dump data</h3>
+
+<h2>Details:</h2>
+
+<p>In ceph, a perfcounter mechanism has been adopted to do the latency breakdown, and the runtime info can be dumped by the admin_socket is an internal implementation in Ceph.</p>
+
+<p>example:</p>
+
+<p><1> codes</p>
+
+<figure class='code'><figcaption><span>git diff</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">diff</span> <span class="o">--</span><span class="n">git</span> <span class="n">a</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">OSD</span><span class="p">.</span><span class="n">cc</span> <span class="n">b</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">OSD</span><span class="p">.</span><span class="n">cc</span>
+</span><span class='line'><span class="n">index</span> <span class="n">d34bb9c</span><span class="p">.</span><span class="mf">.6</span><span class="n">c308d3</span> <span class="mi">100644</span>
+</span><span class='line'><span class="o">---</span> <span class="n">a</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">OSD</span><span class="p">.</span><span class="n">cc</span>
+</span><span class='line'><span class="o">+++</span> <span class="n">b</span><span class="o">/</span><span class="n">src</span><span class="o">/</span><span class="n">osd</span><span class="o">/</span><span class="n">OSD</span><span class="p">.</span><span class="n">cc</span>
+</span><span class='line'><span class="err">@@</span> <span class="o">-</span><span class="mi">7055</span><span class="p">,</span><span class="mi">10</span> <span class="o">+</span><span class="mi">7055</span><span class="p">,</span><span class="mi">10</span> <span class="err">@@</span> <span class="n">PGRef</span> <span class="n">OSD</span><span class="o">::</span><span class="n">OpWQ</span><span class="o">::</span><span class="n">_dequeue</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">void</span> <span class="n">OSD</span><span class="o">::</span><span class="n">OpWQ</span><span class="o">::</span><span class="n">_process</span><span class="p">(</span><span class="n">PGRef</span> <span class="n">pg</span><span class="p">,</span> <span class="n">ThreadPool</span><span class="o">::</span><span class="n">TPHandle</span> <span class="o">&amp;</span><span class="n">handle</span><span class="p">)</span>
+</span><span class='line'> <span class="p">{</span>
+</span><span class='line'><span class="o">-</span>  <span class="n">utime_t</span> <span class="n">pg_lock_lat</span> <span class="o">=</span> <span class="n">ceph_clock_now</span><span class="p">(</span><span class="n">g_ceph_context</span><span class="p">);</span>
+</span><span class='line'><span class="o">+</span>  <span class="n">utime_t</span> <span class="n">start</span> <span class="o">=</span> <span class="n">ceph_clock_now</span><span class="p">(</span><span class="n">g_ceph_context</span><span class="p">);</span>
+</span><span class='line'>   <span class="n">pg</span><span class="o">-&gt;</span><span class="n">lock_suspend_timeout</span><span class="p">(</span><span class="n">handle</span><span class="p">);</span>
+</span><span class='line'><span class="o">-</span>  <span class="n">pg_lock_lat</span> <span class="o">=</span> <span class="n">ceph_clock_now</span><span class="p">(</span><span class="n">g_ceph_context</span><span class="p">)</span> <span class="o">-</span> <span class="n">pg_lock_lat</span><span class="p">;</span>
+</span><span class='line'><span class="o">-</span>  <span class="n">osd</span><span class="o">-&gt;</span><span class="n">logger</span><span class="o">-&gt;</span><span class="n">tinc</span><span class="p">(</span><span class="n">l_osd_pg_lock_lat</span><span class="p">,</span> <span class="n">pg_lock_lat</span><span class="p">);</span>
+</span><span class='line'><span class="o">+</span>  <span class="n">utime_t</span> <span class="n">end</span> <span class="o">=</span> <span class="n">ceph_clock_now</span><span class="p">(</span><span class="n">g_ceph_context</span><span class="p">);</span>
+</span><span class='line'><span class="o">+</span>  <span class="n">osd</span><span class="o">-&gt;</span><span class="n">logger</span><span class="o">-&gt;</span><span class="n">tinc</span><span class="p">(</span><span class="n">l_osd_pg_lock_lat</span><span class="p">,</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="n">OpRequestRef</span> <span class="n">op</span><span class="p">;</span>
+</span><span class='line'>   <span class="p">{</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Current Ceph Version only enabled admin_socket in Ceph Cluster Side, so we need to enable it in RBD side.</p>
+
+<p>//XIAOXI,在ImageCTX里面增加的那句代码我找不到了，你如果可以找到发我一下</p>
+
+<p><2> dump the data</p>
+
+<figure class='code'><figcaption><span>ceph.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#Enable the admin_socket in QEMU RBD</span>
+</span><span class='line'>check ceph.conf
+</span><span class='line'><span class="nv">perf</span> <span class="o">=</span> <span class="nb">false</span>
+</span><span class='line'>-&gt;
+</span><span class='line'><span class="c">#perf = false</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>QEMU disk.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&#39;network&#39;</span> <span class="na">device=</span><span class="s">&#39;disk&#39;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;driver</span> <span class="na">name=</span><span class="s">&#39;qemu&#39;</span> <span class="na">type=</span><span class="s">&#39;raw&#39;</span> <span class="na">cache=</span><span class="s">&#39;none&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol=</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xcd_8osd/volume-3:admin_socket=/var/run/ceph/node5_1.asok&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;target</span> <span class="na">dev=</span><span class="s">&#39;vdb&#39;</span> <span class="na">bus=</span><span class="s">&#39;virtio&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;serial&gt;</span>12f70341-d199-4fca-9270-56e5d6b80061<span class="nt">&lt;/serial&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;alias</span> <span class="na">name=</span><span class="s">&#39;virtio-disk1&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;address</span> <span class="na">type=</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot=</span><span class="s">&#39;0x06&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/disk&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">virsh attach instance1 disk.xml</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">ceph --admin-daemon /var/run/ceph/${osd} perf dump &gt;&gt; ${osd}.txt</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<hr>
+
+
+<h2>Below is the summary of all scripts:</h2>
+
+<p><a href ="http://xuechendi.github.io/downloads/Ceph_Latency_Breakdown_Script.zip"><code style="font-family: 'Fjalla One','Georgia','Helvetica Neue',Arial,sans-serif;font-weight:900;font-size:12px;">download the script</code></a></p>
+
+<h3>Script to mkceph:(in the dir &ldquo;mkceph&rdquo;)</h3>
+
+<p>mkceph_with_pg.sh</p>
+
+<h3>Script to produce workload:(all put in the dir &ldquo;run the test&rdquo;)</h3>
+
+<p><b>run.sh</b>: aim to change the <code>ceph.conf</code> op thread number setting, then restart ceph, vm, and call <code>test.sh</code> to start the test. The test result will then be stored in the path &ldquo;/data/xcd/ceph-CephXCD/run_${id}&rdquo;</p>
+
+<p><b>test.sh</b>: aim to clean run a vm_num loadline test, call <code>mhost-volume-test-xcd.sh</code> to run the actual test</p>
+
+<p><b>mhost-volume-test-xcd.sh</b>: calls <code>clean_cache_on_ceph.sh</code>,<code>check_readahead.sh</code>, <code>volume-test_in_vm.sh</code>, <code>all.fio</code>, <code>volume-test_in_pc.sh</code>, <code>ceph_perf_counter_dump.sh</code>, <code>volume-test_in_ceph.sh</code>, <code>check_cephHealth.sh</code> to run the test(producing workload and collecting runtime system info &amp; ceph info), then collects all the data back to the Node1.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="gp">#</span>example:
+</span><span class='line'><span class="go">./mhost-volume-test-xcd.sh 1 $vm_num 3 4k &quot;vmNum_&quot;$vm_num ${qd} node13_net</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>tip: There is a VM list stored in file &ldquo;node13_net&rdquo;</p>
+
+<h3>Script to parse the data:</h3>
+
+<p><b>getLatbreakdown.sh</b>: aim to parse latency data from <code>*.asok</code> files using <code>post_perf.py</code></p>
+
+<p><b>getResult.sh</b>: aim to parse iostat, mpstat data. It calls <code>post_volume_xcd.sh</code>, <code>post_osd.sh</code>, <code>post_cpu.sh</code>, <code>iostat.sh</code></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[DRBD and Heartbeat]]></title>
@@ -24,16 +169,24 @@
 
 <p><img src="http://xuechendi.github.io/images/HA/IMG_0045.PNG" alt="overview" width=80%></p>
 
-<p>Here we have 2 setups, providing both web service for management and iscsi target service.
-What we wanna have is all the LVs in setup1(222.31.76.144) has a mirror in setup2(222.31.76.228) &mdash; so we need DRBD
-Then we use LV1 as lun0 to provide iscsi disk to client1, all client1 knows is that his iscsi target provider&rsquo;s ip address is 222.31.76.250(may be setup1 or setup2) &mdash; so we need heartbeat. Basically, setup1 will response to the client&rsquo;s request, only when setup&rsquo;s eth0 nic doesn&rsquo;t work(this will happen when setup1 is down), setup2 will continue to provide web service and iscsi service.</p>
+<p>Here we have 2 setups, providing both web service for management and iscsi target service.</p>
+
+<p>What we wanna have is all the LVs in setup1(222.31.76.144) has a mirror in setup2(222.31.76.228) &mdash; so we need DRBD</p>
+
+<p>Then we use LV1 as lun0 to provide iscsi disk to client1, all client1 knows is that his iscsi target provider&rsquo;s ip address is 222.31.76.250(may be setup1 or setup2) &mdash; so we need heartbeat.</p>
+
+<p>Basically, setup1 will response to the client&rsquo;s request, only when setup&rsquo;s eth0 nic doesn&rsquo;t work(this will happen when setup1 is down), setup2 will continue to provide web service and iscsi service.</p>
 
 <p>Ok, another problem, when we need setup2 can continue to provide iscsi service, we need disks in setup to can also be the primary node in drbd semantic, so when data written to setup2, data can be sync to setup1.</p>
 
-<p>Let&rsquo;s just summary all the requirement here:
-1. Using heartbeat to provide a virtual ip 222.31.76.250 and watch the liveness of both setups.
-2. Using DRBD to sync LVs in setup1 and setup2, the syncronization can be both sides(dual primary).
-3. Need to keep in mind, when the sync link(eth0,192.168.1.*) breaks, there will be a split brain situation in our DRBD setting, so we need to record who is the latest iscsi target provider and use that one to recover the DRBD setting.</p>
+<p>Let&rsquo;s just summary all the requirement here:</p>
+
+<ol>
+<li><p>Using heartbeat to provide a virtual ip 222.31.76.250 and watch the liveness of both setups.</p></li>
+<li><p>Using DRBD to sync LVs in setup1 and setup2, the syncronization can be both sides(dual primary).</p></li>
+<li><p>Need to keep in mind, when the sync link(eth0,192.168.1.*) breaks, there will be a split brain situation in our DRBD setting, so we need to record who is the latest iscsi target provider and use that one to recover the DRBD setting.</p></li>
+</ol>
+
 
 <h2>DRBD setting</h2>
 
