@@ -1,0 +1,985 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[XueChendi]]></title>
+  <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
+  <link href="http://xuechendi.github.io/"/>
+  <updated>2013-12-04T21:29:29+08:00</updated>
+  <id>http://xuechendi.github.io/</id>
+  <author>
+    <name><![CDATA[Chendi.Xue]]></name>
+    <email><![CDATA[xuechendi@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[DRBD and Heartbeat]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/04/drbd-and-heartbeat/"/>
+    <updated>2013-12-04T19:07:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/04/drbd-and-heartbeat</id>
+    <content type="html"><![CDATA[<p>These days, need to deploy a HA solution in our setup, and just write all these down helping the next time deployment.</p>
+
+<h2>The Overview</h2>
+
+<p><img src="http://xuechendi.github.io/images/HA/IMG_0045.PNG" alt="overview" width=80%></p>
+
+<p>Here we have 2 setups, providing both web service for management and iscsi target service.
+What we wanna have is all the LVs in setup1(222.31.76.144) has a mirror in setup2(222.31.76.228) &mdash; so we need DRBD
+Then we use LV1 as lun0 to provide iscsi disk to client1, all client1 knows is that his iscsi target provider&rsquo;s ip address is 222.31.76.250(may be setup1 or setup2) &mdash; so we need heartbeat. Basically, setup1 will response to the client&rsquo;s request, only when setup&rsquo;s eth0 nic doesn&rsquo;t work(this will happen when setup1 is down), setup2 will continue to provide web service and iscsi service.</p>
+
+<p>Ok, another problem, when we need setup2 can continue to provide iscsi service, we need disks in setup to can also be the primary node in drbd semantic, so when data written to setup2, data can be sync to setup1.</p>
+
+<p>Let&rsquo;s just summary all the requirement here:
+1. Using heartbeat to provide a virtual ip 222.31.76.250 and watch the liveness of both setups.
+2. Using DRBD to sync LVs in setup1 and setup2, the syncronization can be both sides(dual primary).
+3. Need to keep in mind, when the sync link(eth0,192.168.1.*) breaks, there will be a split brain situation in our DRBD setting, so we need to record who is the latest iscsi target provider and use that one to recover the DRBD setting.</p>
+
+<h2>DRBD setting</h2>
+
+<p>1.The installation
+we need to install two parts of DRBD, the kmod who is the real implementation of drbd, and the drbdadm, which helps a lot to manage the drbd service.</p>
+
+<figure class='code'><figcaption><span>drbd rpm</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>drbd83-8.3.15-2.el5.centos.x86_64.rpm       kmod-drbd83-8.3.15-3.el5.centos.x86_64.rpm
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>2.The drbd config file
+We can start from the drbd conf file /etc/drbd.conf</p>
+
+<figure class='code'><figcaption><span>/etc/drbd.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># please have a a look at the example configuration file in</span>
+</span><span class='line'><span class="c"># /usr/share/doc/drbd83/drbd.conf</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'>include <span class="s2">&quot;drbd.d/global_common.conf&quot;</span>;
+</span><span class='line'>include <span class="s2">&quot;drbd.d/*.res&quot;</span>;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>As we can see, in this config file,it include a global_common.conf and *.res
+The first one writes some common setting for drbd, things like the sync protocol(Async, semi-sync, sync), net rate setting, blah, blah&hellip;
+The second one is what we need to build our resource, the config will be like below:</p>
+
+<figure class='code'><figcaption><span>mpx.res</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>resource mpx <span class="o">{</span>
+</span><span class='line'>    protocol C;
+</span><span class='line'>    net <span class="o">{</span>
+</span><span class='line'>        allow-two-primaries;
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    syncer <span class="o">{</span>
+</span><span class='line'>          rate 1024M;  //sync bandwidth
+</span><span class='line'>     <span class="o">}</span>
+</span><span class='line'>    on super <span class="o">{</span>
+</span><span class='line'>        device /dev/drbd0;
+</span><span class='line'>        disk /dev/raid0/lv01;
+</span><span class='line'>        address 192.168.1.100:7789;
+</span><span class='line'>        meta-disk internal;
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    on MPXHA <span class="o">{</span>
+</span><span class='line'>        device /dev/drbd0;
+</span><span class='line'>        disk /dev/vg01/lv01;
+</span><span class='line'>        address 192.168.1.152:7789;
+</span><span class='line'>        meta-disk internal;
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The protocol part says we will use sync method in this resource
+The net part says both nodes can be primary
+The last two parts describe the drbd device and the nic they used to sync data(Here we can direclty connect two setup by ethernet line.)</p>
+
+<p>The above *.res should has replication both in setup1 and setup2
+After that there is few command we need to first time build this DRBD resource.</p>
+
+<figure class='code'><figcaption><span>first building drbd resource</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>drbdadm create-md mpx // this should be <span class="k">done </span>both in setup1 and setup2
+</span><span class='line'>service drbd restart // both in setup1 and setup2
+</span><span class='line'>
+</span><span class='line'>drbdadm primary --force resource // only in setup1
+</span><span class='line'>
+</span><span class='line'>drbd-overview // can be <span class="k">done </span>both in setup1 or setup2, here I did in setup2
+</span><span class='line'>drbd driver loaded OK; device status:
+</span><span class='line'>version: 8.3.11 <span class="o">(</span>api:88/proto:86-96<span class="o">)</span>
+</span><span class='line'>srcversion: 2D876214BAAD53B31ADC1D6
+</span><span class='line'>m:res  cs          ro                 ds
+</span><span class='line'>0:mpx  SyncTarget  Secondary/Primary  Inconsistent/UpToDate  C
+</span><span class='line'>...    sync<span class="err">&#39;</span>ed:    25.4%              <span class="o">(</span>1373576/1837720<span class="o">)</span>K
+</span><span class='line'>
+</span><span class='line'>... <span class="nb">wait </span><span class="k">until</span>
+</span><span class='line'>
+</span><span class='line'>drbd driver loaded OK; device status:
+</span><span class='line'>version: 8.3.11 <span class="o">(</span>api:88/proto:86-96<span class="o">)</span>
+</span><span class='line'>srcversion: 2D876214BAAD53B31ADC1D6
+</span><span class='line'>m:res  cs         ro                 ds                 p  mounted  fstype
+</span><span class='line'>0:mpx  Connected  Secondary/Primary  UpToDate/UpToDate  C
+</span><span class='line'>
+</span><span class='line'>drbdadm primary mpx // in setup2
+</span><span class='line'>drbd-overview
+</span><span class='line'>drbd driver loaded OK; device status:
+</span><span class='line'>version: 8.3.11 <span class="o">(</span>api:88/proto:86-96<span class="o">)</span>
+</span><span class='line'>srcversion: 2D876214BAAD53B31ADC1D6
+</span><span class='line'>m:res  cs         ro               ds
+</span><span class='line'>0:mpx  Connected  Primary/Primary  UpToDate/UpToDate  C
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here is when we use drbd sevice as iscsi lun,yeah, you need this copy both in setup1 and setup2</p>
+
+<figure class='code'><figcaption><span>scst.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># Automatically generated by SCST Configurator v2.2.0.</span>
+</span><span class='line'>HANDLER vdisk_fileio <span class="o">{</span>
+</span><span class='line'>    DEVICE vg01_lv01 <span class="o">{</span>
+</span><span class='line'>        filename /dev/drbd0 // ￼ drbd
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>TARGET_DRIVER iscsi <span class="o">{</span>
+</span><span class='line'>    enabled 1
+</span><span class='line'>    TARGET iqn.2011-1212.edu.cuc.storagelab:mpx.target1 <span class="o">{</span>
+</span><span class='line'>        cpu_mask 0000ff
+</span><span class='line'>        enabled 1
+</span><span class='line'>        rel_tgt_id 1
+</span><span class='line'>        GROUP xcd <span class="o">{</span>
+</span><span class='line'>            LUN 0 vg01_lv01
+</span><span class='line'>            INITIATOR iqn.2012-12.cn.edu.cuc.xcd:1234567
+</span><span class='line'>            INITIATOR iqn.1991-05.com.microsoft:win-p56rroe0srf
+</span><span class='line'>            cpu_mask 0000ff
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Heartbeat setting</h2>
+
+<ol>
+<li>The installation
+Seems we can not simply get heartbeat in yum
+Here is the solution</li>
+</ol>
+
+
+<figure class='code'><figcaption><span>heartbeat installation</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">Step-1 : Make download folder under the root.</span>
+</span><span class='line'><span class="go">[root@setup1 download]# mkdir /download</span>
+</span><span class='line'><span class="go">[root@setup1 download]# cd /download/</span>
+</span><span class='line'><span class="go">Step-2 : Download EPEL repository.</span>
+</span><span class='line'><span class="go">[root@setup1 download]# wget ftp://mirror.switch.ch/pool/1/mirror/scientificlinux/6rolling/i386/os/Packages/epel-release-6-5.noarch.rpm</span>
+</span><span class='line'><span class="go">Step-3 : Install Epel RPM.</span>
+</span><span class='line'><span class="go">rpm -ivUh epel-release-6-5.noarch.rpm </span>
+</span><span class='line'><span class="go">warning: epel-release-6-5.noarch.rpm: Header V4 DSA/SHA1 Signature, key ID 192a7d7d: NOKEY</span>
+</span><span class='line'><span class="go">Preparing...                ########################################### [100%]</span>
+</span><span class='line'><span class="go">   1:epel-release           ########################################### [100%]</span>
+</span><span class='line'><span class="go">Step-4 : Edit epel.repo file ‘/etc/yum.repos.d/epel.repo’ change the line # 6 ‘enable=1 to enable=0′.</span>
+</span><span class='line'><span class="go">[root@setup1 download]# vi /etc/yum.repos.d/epel.repo </span>
+</span><span class='line'><span class="go">[epel]</span>
+</span><span class='line'><span class="go">name=Extra Packages for Enterprise Linux 6 - $basearch</span>
+</span><span class='line'><span class="gp">#</span><span class="nv">baseurl</span><span class="o">=</span>http://download.fedoraproject.org/pub/epel/6/<span class="nv">$basearch</span>
+</span><span class='line'><span class="gp">mirrorlist=http://mirrors.fedoraproject.org/metalink?repo=epel-6&amp;amp;arch=$</span>basearch
+</span><span class='line'><span class="go">failovermethod=priority</span>
+</span><span class='line'><span class="go">enabled=0</span>
+</span><span class='line'><span class="go">CentOS 6 :  </span>
+</span><span class='line'><span class="go">Step-5 : Now we are ready to install Heartbeat with yum command.</span>
+</span><span class='line'><span class="go">[root@setup1 download]# yum --enablerepo=epel install heartbeat</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ol>
+<li>The setting</li>
+</ol>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/ha.cf /etc/ha.d/</span>
+</span><span class='line'><span class="go">[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/haresources /etc/ha.d/</span>
+</span><span class='line'><span class="go">[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/authkeys /etc/ha.d/</span>
+</span><span class='line'><span class="go">[root@setup1 download]# vim /etc/ha.d/ha.cf</span>
+</span><span class='line'><span class="go">debugfile /var/log/ha-debug</span>
+</span><span class='line'><span class="go">keepalive 2</span>
+</span><span class='line'><span class="go">deadtime 10</span>
+</span><span class='line'><span class="go">warntime 6</span>
+</span><span class='line'><span class="go">initdead 120</span>
+</span><span class='line'><span class="go">udpport 694</span>
+</span><span class='line'><span class="go">ucast eth0 222.31.76.228</span>
+</span><span class='line'><span class="go">node   super</span>
+</span><span class='line'><span class="go">node   MPXHA</span>
+</span><span class='line'><span class="go">auto_failback on</span>
+</span><span class='line'><span class="go">respawn hacluster /usr/lib64/heartbeat/ipfail</span>
+</span><span class='line'><span class="go">[root@setup2 download]# vim /etc/ha.d/ha.cf</span>
+</span><span class='line'><span class="go">debugfile /var/log/ha-debug</span>
+</span><span class='line'><span class="go">keepalive 2</span>
+</span><span class='line'><span class="go">deadtime 10</span>
+</span><span class='line'><span class="go">warntime 6</span>
+</span><span class='line'><span class="go">initdead 120</span>
+</span><span class='line'><span class="go">udpport 694</span>
+</span><span class='line'><span class="go">ucast eth0 222.31.76.144</span>
+</span><span class='line'><span class="go">node   super</span>
+</span><span class='line'><span class="go">node   MPXHA</span>
+</span><span class='line'><span class="go">auto_failback on</span>
+</span><span class='line'><span class="go">respawn hacluster /usr/lib64/heartbeat/ipfail</span>
+</span><span class='line'><span class="go">[root@setup1&amp;setup2 download]# vim /etc/ha.d/haresouces</span>
+</span><span class='line'><span class="go">super IPaddr::222.31.76.250/24/eth0</span>
+</span><span class='line'><span class="go">[root@setup1&amp;setup2 download]# service heartbeat restart</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>There is also one problem we mentioned before called &ldquo;split brain&rdquo;, here is the way to solve this situation</h2>
+
+<p>This situation happens when the eth0(the link used to sync data beween drbd resources are broken), and both drbd will see itself as primary and the other as unknown</p>
+
+<figure class='code'><figcaption><span>when split brain happens</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@super ~]# service drbd status</span>
+</span><span class='line'><span class="go">drbd driver loaded OK; device status:</span>
+</span><span class='line'><span class="go">version: 8.3.11 (api:88/proto:86-96)</span>
+</span><span class='line'><span class="go">srcversion: 2D876214BAAD53B31ADC1D6</span>
+</span><span class='line'><span class="go">m:res  cs          ro               ds                 p       mounted  fstype</span>
+</span><span class='line'><span class="go">0:mpx  StandAlone  Primary/Unknown  UpToDate/DUnknown  r-----</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The way to tackle this problem when both drbd device also act as the iscsi lun</p>
+
+<figure class='code'><figcaption><span>How to solve split brain problem</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">service scst stop</span>
+</span><span class='line'><span class="go">drbdadm secondary mpx</span>
+</span><span class='line'><span class="go">drbdadm disconnect mpx</span>
+</span><span class='line'><span class="go">drbdadm -- --discard-my-data connect mpx</span>
+</span><span class='line'><span class="go">ssh 222.31.76.144 &quot;drbdadm connect mpx&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">service drbd status </span>
+</span><span class='line'>
+</span><span class='line'><span class="go">drbd driver loaded OK; device status:</span>
+</span><span class='line'><span class="go">version: 8.3.11 (api:88/proto:86-96)</span>
+</span><span class='line'><span class="go">srcversion: 2D876214BAAD53B31ADC1D6</span>
+</span><span class='line'><span class="go">m:res  cs          ro                 ds</span>
+</span><span class='line'><span class="go">0:mpx  SyncTarget  Secondary/Primary  Inconsistent/UpToDate  C</span>
+</span><span class='line'><span class="go">...    sync&#39;ed:    25.4%              (1373576/1837720)K</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">drbd driver loaded OK; device status:</span>
+</span><span class='line'><span class="go">version: 8.3.11 (api:88/proto:86-96)</span>
+</span><span class='line'><span class="go">srcversion: 2D876214BAAD53B31ADC1D6</span>
+</span><span class='line'><span class="go">m:res  cs         ro                 ds                 p  mounted  fstype</span>
+</span><span class='line'><span class="go">0:mpx  Connected  Secondary/Primary  UpToDate/UpToDate  C</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">drbdadm primary mpx</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">drbd driver loaded OK; device status:</span>
+</span><span class='line'><span class="go">version: 8.3.11 (api:88/proto:86-96)</span>
+</span><span class='line'><span class="go">srcversion: 2D876214BAAD53B31ADC1D6</span>
+</span><span class='line'><span class="go">m:res  cs         ro               ds</span>
+</span><span class='line'><span class="go">0:mpx  Connected  Primary/Primary  UpToDate/UpToDate  C</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">service scst start</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Just some paitings on Openstack]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/18/just-some-paitings-on-openstack/"/>
+    <updated>2013-11-18T14:27:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/18/just-some-paitings-on-openstack</id>
+    <content type="html"><![CDATA[<p>Since I got my iPad air, just fell in love with drawing stuffs.</p>
+
+<p>Painted in Nov. 5th afternoon after the discussion of &ldquo;Software Define Storage&rdquo;.</p>
+
+<p><img src="http://xuechendi.github.io/images/Paintings_about_openstack/SDS.PNG" alt="SDS" /></p>
+
+<p>And a draft draw of some Souvenir</p>
+
+<p><img src="http://xuechendi.github.io/images/Paintings_about_openstack/Openstack_souv.PNG" alt="openstack_souv" /></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[System analysis and tools]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/system-analysis-and-tools/"/>
+    <updated>2013-11-15T01:09:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/system-analysis-and-tools</id>
+    <content type="html"><![CDATA[<h2>It&rsquo;s really clear of these 2 graphs to remind me all those tools can help to analyse the system</h2>
+
+<h2>So happily sharing here ~~~</h2>
+
+<p><img src="http://xuechendi.github.io/images/system_analysis_tools/overview.jpg" alt="overview" />
+<img src="http://xuechendi.github.io/images/system_analysis_tools/tools.jpg" alt="overview" /></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AIO-STRESS vs. FIO]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio/"/>
+    <updated>2013-11-15T01:05:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio</id>
+    <content type="html"><![CDATA[<p>There is no big gap to me in producing workload by AIO-STREE and FIO.</p>
+
+<p>Just because I haven&rsquo;t using much more advanced feature in FIO like replay trace, and I just using libaio as the driver.</p>
+
+<p>But here, I just wanna show some interesting test to see some behavior by different setting of io_depth and io_batch. And <code>sadly</code> that is just some wrong setting I did before and produced some strange data then I just realized how these settings mean. T_T</p>
+
+<h2>Just follow my lead to see how I found this wrong setting. ^_^</h2>
+
+<p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/1.png" alt="findings" /></p>
+
+<p>After a loadline test of io_depth setting, I just found the figures followed some rules, so using qemu logs, I draw above graph. This is a graph recording the io request intervals sending from qemu to librbd, and catched in librbd logs.</p>
+
+<p>As we can see, when we set the queue_depth as 8, the first io request has quite small interval(0.075ms), but the interval between the 8th and 9th io request is pretty long(1.6ms). And if we set the queue_depth as 16, or 32. The burst interval happened just between the 16th to 17th, and 32th to 33th respectively.</p>
+
+<p>So there comes the deduction:
+Queue will send out all requests, then wait the last request completes . After that it starts to send out new queue.</p>
+
+<h2>How to prove it?</h2>
+
+<h3>Methodology:</h3>
+
+<ol>
+<li>. Set queue depth = 64</li>
+<li>. make the 42th request sleep 3s in completion thread</li>
+</ol>
+
+
+<h3>&mdash;> If RBD waits 3s then receives the 65th requests, we can confirm the deduction.</h3>
+
+<h3>How to do this?</h3>
+
+<p>There is a function in librbd named C_AioRead::finish in AioCompletion.cc, so what we need to do is just randomly block this function for 3s, and see what happens.</p>
+
+<p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/2.png" alt="proving" /></p>
+
+<p>Aha! The results just show as what we expect.</p>
+
+<h3>But there are still 3 possibilities can produce result like this.</h3>
+
+<p>1.Wrong workload setting?
+2.Ceph RBD design ?  if there is some lock in finish thread that blocks the submit thread
+3.Virtio ?</p>
+
+<p>The situation produced by FIO</p>
+
+<p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/3.png" alt="proving" /></p>
+
+<p>From this graph, we can see the result is really different by using aio-stress, which can help us to exclude last two possibilities. That means we must do some wrong setting in aio-stress or aio-stress just have some wierd strategy design.</p>
+
+<p>Also we can see the difference in logs.</p>
+
+<p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/4.png" alt="proving" /></p>
+
+<p><code>Here I will add some aio-stress codes digging into soon, just not now~ Sorry</code></p>
+
+<hr>
+
+
+<p>The right setting for random io in aio-stress to act more meet our demand (Here I said random io is because this setting may result in no io merge in sequential io)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">./aio-stress -O -o 3 -i 1 -d 64 -r4k -s 4m /dev/vdb</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/5.png" alt="proving" /></p>
+
+<p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/6.png" alt="proving" /></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[How to break into Ceph Codes]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes/"/>
+    <updated>2013-11-15T01:00:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes</id>
+    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this weekend</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ObjectCacher: RBD Cache Codes]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes/"/>
+    <updated>2013-11-15T00:58:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes</id>
+    <content type="html"><![CDATA[<p>There is some cache mechanism in Ceph RBD.
+And it is now in memory cache which supports write through and write back.</p>
+
+<p>In this post, I would post what I have learnt from ObjectCacher codes.</p>
+
+<h2>How to deploy RBD Cache</h2>
+
+<p>there is a really clear instruction in ceph.com, just linked here <code><a href="http://ceph.com/docs/master/rbd/rbd-config-ref/?highlight=rbd%20cache">Ceph RBD Cache setting</a></code></p>
+
+<h2>How to record log from RBD</h2>
+
+<p>There is a little tricky to record log in RBD sides, because if you simply add the log settings in ceph.conf, you can only get logs when you do something using &ldquo;rbd&rdquo; command, like &ldquo;rbd lspools&rdquo;, etc. So simply adding log settings in ceph.conf(client side) can not help you to get logs from QEMU to librbd, the reason is unknown to me, but I just find a way to walk around this.</p>
+
+<p>All you need to do is to add log setting in you instance.xml, then using libvirt to boot this instance or also you can just attach a new disk by using xml like below.</p>
+
+<figure class='code'><figcaption><span>disk.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&#39;network&#39;</span> <span class="na">device=</span><span class="s">&#39;disk&#39;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;driver</span> <span class="na">name=</span><span class="s">&#39;qemu&#39;</span> <span class="na">type=</span><span class="s">&#39;raw&#39;</span> <span class="na">cache=</span><span class="s">&#39;none&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol=</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_file=/tmp/qemu-rbd.log&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;target</span> <span class="na">dev=</span><span class="s">&#39;vdb&#39;</span> <span class="na">bus=</span><span class="s">&#39;virtio&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;serial&gt;</span>12f70341-d199-4fca-9270-56e5d6b80061<span class="nt">&lt;/serial&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;alias</span> <span class="na">name=</span><span class="s">&#39;virtio-disk1&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;address</span> <span class="na">type=</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot=</span><span class="s">&#39;0x06&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/disk&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>After attach this disk, you can find logs in /tmp/qemu-rbd.log or you can just write to qemu log.</p>
+
+<figure class='code'><figcaption><span>write log to</span><a href='http://xuechendi.github.io/var/libvirt/qemu/xxxxx(instance_name).log'>link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol=</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_to_stderr=true&#39;</span><span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is a really clear codes path we can find from logs, so just using log to debug or hack into the rbd codes.</p>
+
+<h2>Dig into the codes</h2>
+
+<p>If we enable rbd cache in ceph.conf(client side), the ObjectCacher object is created when this rbd image attach to the vm.
+Here is the overview.</p>
+
+<p><img src="http://xuechendi.github.io/images/RBD_Cache/overview.png" width=60%></p>
+
+<p>From above we can see each RBD has a object to store all information name ImageCtx(image context), so there is only one ObjectCacher in one RBD cache and also different RBD images can not share their cache till now.</p>
+
+<p>ObjectCacher uses poolid, oid(objectid), then offset and length to index cache in memory.</p>
+
+<p>Then here is a graph to show how ceph using ObjectCacher.</p>
+
+<p><img src="http://xuechendi.github.io/images/RBD_Cache/workflow_send_req.png" width=100%></p>
+
+<p><img src="http://xuechendi.github.io/images/RBD_Cache/workflow_recv_req.png" width=50%></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Cache &amp; Consistency]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/cache-and-consistency/"/>
+    <updated>2013-11-15T00:55:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/cache-and-consistency</id>
+    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this week</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Study of Data distribution methods--Crush]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method/"/>
+    <updated>2013-11-15T00:51:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method</id>
+    <content type="html"><![CDATA[<p>wanna learn, mark here</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Device-Mapper deep dive]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/"/>
+    <updated>2013-11-14T19:40:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive</id>
+    <content type="html"><![CDATA[<p>I used to stuck in all these terms and concepts for like really long time, just trying to get everything clear by writing.</p>
+
+<h2>Storage subsystem</h2>
+
+<h3>Overview</h3>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/overview.png" alt="overview" width=80%></p>
+
+<p>BIO is the unit to map data in the memory to generic block offset.
+When generic block layer gets bio units, it calls io scheduler to combine bios into request to specific device.
+Then requests can be sent to real device or virtual block device like software raid or logic volume(using MD or Device Mapper modules).</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/bio.png" alt="bio" width=80%></p>
+
+<p>Actually BIO units point to a much smaller unit named bio_vec which is the exactly unit point to the memory, and BIO also has one field record which block device and which sector it wanna to read/write.(Notice, the block device here is kind of a generic idea, could be some virtual block device)</p>
+
+<p>The smart use of bio_vec help kernel to support scatter/Gather I/O, so that BIO can map some scatter part in mem to some continuous part in block device.</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/request.png" alt="request" width=80%></p>
+
+<p>When BIO unit received by generic block layer, kernel will do some &ldquo;merge and sort&rdquo; operations then hand the combined BIOs to block device. All these work can be done in the IO scheduler layer and then all BIO units are combined into one and one request, which also be linked by a pointer named &ldquo;request_queue&rdquo; store in bdev struct(gendisk).</p>
+
+<p>Then the whole idea is pretty clear, there is a picture shows some important function to translate a fs syscall into requests to block devices.</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/functions.png" alt="functions" width=50%></p>
+
+<p>Submit_bio is a generic api to submit bio to generic block layer(of course by its name&hellip;)</p>
+
+<p>generic_make_request puts BIO into bio_list, then __generic_make_request will see if this bio is suitable to make request or it is delivered to some stack device like Device Mapper(in this situation, __generic_make_request will produce a new bio and call generic_make_request).</p>
+
+<p>__make_request_fn() then pus BIO into request_queue, if this function returns 0, the BIO is delivered to the real block device, or it may continues to call __make_request_fn until it delivered to real block device(like Device Mapper).</p>
+
+<p>In fact, the request_queue also will not be directly tackled by block device, the device will use some method named &ldquo;Plugging/Unplugging&rdquo; to tackles these requests.</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/structures.png" alt="structures" width=50%></p>
+
+<p>Now let&rsquo;s see a linked graph of some important structs in block-level subsystem. Every block device has a field named gendisk(generic disk), and generic disk has a field to record its request_queue, and since each type of block device has its own implementation of read and write, the gendisk also has a field named private_data to point to the corresponding block device(also, the block device can be real or virtual).</p>
+
+<h2>Then, after all the general idea of block-layer subsystem, let&rsquo;s talk about <code>Device Mapper</code></h2>
+
+<h3>What is Device-Mapper</h3>
+
+<ul>
+<li>A block device mapping facility available in Linux Kernel.</li>
+<li>A component required by LVM2 to support the mapping between logical volumes and physical storage devices.</li>
+<li>Device-mapper provides a generic way to create virtual layers of block devices that can do different things on top of real block devices like striping, concatenation, mirroring, snapshotting, etc&hellip;</li>
+</ul>
+
+
+<h3>Here is the Usecase</h3>
+
+<p>Before lv creation</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/Before lv creation.png" alt="Before lv creation" width=40%></p>
+
+<p>After lv creation</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/after lv creation.png" alt="after lv creation" width=40%></p>
+
+<p>The thing should notice here is that a dm-0 device in /sys/block is created, which indicates that Logic Volume is a &ldquo;device mapper&rdquo; device.</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/after lv creation2.png" alt="after lv creation" width=40%></p>
+
+<h3>another device mapper usecase</h3>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/dm_usecase2.png" alt="dm_usecase2" width=60%></p>
+
+<h3>Here is the Device Mapper Overview</h3>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/dm_overview.png" alt="dm_overview" width=50%></p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/dm_struct.png" alt="dm_struct" width=50%></p>
+
+<p>DM Devices in Ubuntu 12.10,kernel 3.6.3</p>
+
+<p><img src="http://xuechendi.github.io/images/dm_deep_dive/dm_targets.png" alt="dm_targets" width=50%></p>
+
+<p>Linear Device target-type example</p>
+
+<figure class='code'><figcaption><span>linear-device-struct</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="k">struct</span> <span class="n">target_type</span> <span class="n">linear_target</span> <span class="o">=</span> <span class="p">{</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">name</span><span class="err">   </span><span class="o">=</span> <span class="s">&quot;linear&quot;</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">version</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">},</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">module</span> <span class="o">=</span> <span class="n">THIS_MODULE</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">ctr</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_ctr</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">dtr</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_dtr</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">map</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_map</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">linear_status</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">ioctl</span><span class="err">  </span><span class="o">=</span> <span class="n">linear_ioctl</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">merge</span><span class="err">  </span><span class="o">=</span> <span class="n">linear_merge</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">iterate_devices</span> <span class="o">=</span> <span class="n">linear_iterate_devices</span><span class="p">,</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Let&rsquo;s see the codes</h3>
+
+<figure class='code'><figcaption><span>How DM handle the device creation command?</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">int</span> <span class="nf">dm_create</span><span class="p">(</span><span class="kt">int</span> <span class="n">minor</span><span class="p">,</span> <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">**</span><span class="n">result</span><span class="p">){</span>
+</span><span class='line'><span class="err">   </span>   <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">*</span><span class="n">md</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">md</span> <span class="o">=</span> <span class="n">alloc_dev</span><span class="p">(</span><span class="n">minor</span><span class="p">);</span><span class="err">   </span> 
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">md</span><span class="p">)</span><span class="err">       </span>      
+</span><span class='line'>      <span class="k">return</span> <span class="o">-</span><span class="n">ENXIO</span><span class="p">;</span><span class="err"> </span>   
+</span><span class='line'>  <span class="n">dm_sysfs_init</span><span class="p">(</span><span class="n">md</span><span class="p">);</span><span class="err">   </span>   
+</span><span class='line'>  <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="n">md</span><span class="p">;</span><span class="err">   </span> 
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>How DM handle the read/write command? </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">dm_request</span><span class="p">(</span><span class="k">struct</span> <span class="n">request_queue</span> <span class="o">*</span><span class="n">q</span><span class="p">,</span> <span class="k">struct</span> <span class="n">bio</span> <span class="o">*</span><span class="n">bio</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">*</span><span class="n">md</span> <span class="o">=</span> <span class="n">q</span><span class="o">-&gt;</span><span class="n">queuedata</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">dm_request_based</span><span class="p">(</span><span class="n">md</span><span class="p">))</span>
+</span><span class='line'>      <span class="n">blk_queue_bio</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">bio</span><span class="p">);</span>  <span class="c1">//Using dm_target rules to reconstruct the bio</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>      <span class="n">_dm_request</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">bio</span><span class="p">);</span>    <span class="c1">//split and process this bio</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[resume]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/14/resume/"/>
+    <updated>2013-11-14T14:08:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/14/resume</id>
+    <content type="html"><![CDATA[<h1>Xue Chendi (薛晨笛)
+<a href ="http://xuechendi.github.io/downloads/Resume_XueChendi.pdf"><code style="font-family: 'Fjalla One','Georgia','Helvetica Neue',Arial,sans-serif;font-weight:900;font-size:12px;">download the resume</code></a>
+</h1>
+
+
+<h3>0086-18600035546; xuechendi@gmail.com</h3>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>SKILLS</h2>
+
+
+<ul>
+    <li>Linux kernel/module programming experience</li>
+    <li>PHP-based website development experience</li>
+    <li>Familiar with block-level storage subsystem (iSCSI and Device-Mapper) </li>
+    <li>Linux system operating maintenance experience</li>
+    <li>CET-6(556)、IELTS(6.5)</li>
+</ul>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>EDUCATION</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2011.9 - Present</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>Communication University of China</li>
+            <li>Masters of Computer software and theory</li>
+            <li>Concentration in Distributed storage, ranking 1st at first year&#8217;s courses learning</li>
+        </ul>
+    </div>
+    <div style="width:20%;">2007.9 - 2011.7</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>Communication University of China</li>
+            <li>Major in computer science and technology with GPA of 3.61.</li>
+            <li>Minor in Digital Art, college of Animation.</li>
+        </ul>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>PROJECT EXPERIENCE</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2011.7 - Present</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>Low energy-consuming storage devices development and industrialization</li>
+            <li>National science and technology support program(2011BAH04B05)</li>
+            <li>Develop a storage management system based on B/S architecture to integrate main Linux storage APIs and also do some optimization to help system administrators to setup raid, LV,iSCSI devices, FC devices, NFS, and CIFS, also manage basic service operations.</li>
+        </ul>
+    </div>
+    <div style="width:20%;">2010.1 - 2011.6</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>Research of semantic storage system for MP3</li>
+            <li>National undergraduate innovation project</li>
+            <li>Develop a system that stores MP3 files and metadata separately, then uses metadata/tags to build a RDF triples that can do semantic search of files. In order to optimise the search speed, the system also uses the fast-page mechanism.</li>
+        </ul>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>ACADEMIC ACHEIVEMENT</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2013</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>《The Optimization of network link aggregation for iSCSI》</li>
+            <li>As the first and primary author</li>
+            <li>Accepted by The 19th National Conference of Information Storage 2013</li>
+        </ul>
+    </div>
+    <div style="width:20%;">2011</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>《Research of semantic storage system for MP3》</li>
+            <li>As the first and primary author</li>
+            <li>IEEE Digital Object Identifier: 10.1109/CECNET.2011.5768656</li>
+        </ul>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>INTERNSHIP</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2013</div>
+    <div style="width:80%;padding-left:5%;">
+        <ul>
+            <li>INTEL R&D CENTER , SSG/SOTC</li>
+            <li>Daily work mainly concentrate on CEPH testing and tuning</li>
+            <li>Community contribution mainly focus on Openstack-cinder</li>
+        </ul>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+
+<h2>SCHOOL ACTIVITY</h2>
+
+
+<div style="width:100%;">
+    <div style="width:20%;">2008</div>
+    <div style="width:80%;padding-left:5%;">
+        <li>Leader of Part-time Job Service Propaganda Department</li>
+    </div>
+</div>
+
+
+<br>
+
+
+<hr>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[aboutme]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/14/aboutme/"/>
+    <updated>2013-11-14T11:01:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/14/aboutme</id>
+    <content type="html"><![CDATA[<p>Hi, This is Chendi.Xue, a girl from China and have huge interest in Storage.
+I am building this website to share stuff I am into.
+Please feel free to contact me in any reason ~</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[First post to Octopress]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/13/first-post-to-octopress/"/>
+    <updated>2013-11-13T00:34:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/13/first-post-to-octopress</id>
+    <content type="html"><![CDATA[<h1>This is XueChendi</h1>
+
+]]></content>
+  </entry>
+  
+</feed>

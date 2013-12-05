@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Storage | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/storage/atom.xml" rel="self"/>
+  <link href="http://xuechendi.github.io/"/>
+  <updated>2013-12-04T21:29:29+08:00</updated>
+  <id>http://xuechendi.github.io/</id>
+  <author>
+    <name><![CDATA[Chendi.Xue]]></name>
+    <email><![CDATA[xuechendi@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[AIO-STRESS vs. FIO]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio/"/>
+    <updated>2013-11-15T01:05:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio</id>
+    <content type="html"><![CDATA[<p>There is no big gap to me in producing workload by AIO-STREE and FIO.</p>
+
+<p>Just because I haven&rsquo;t using much more advanced feature in FIO like replay trace, and I just using libaio as the driver.</p>
+
+<p>But here, I just wanna show some interesting test to see some behavior by different setting of io_depth and io_batch. And <code>sadly</code> that is just some wrong setting I did before and produced some strange data then I just realized how these settings mean. T_T</p>
+
+<h2>Just follow my lead to see how I found this wrong setting. ^_^</h2>
+
+<p><img src="/images/AIO_vs_FIO/1.png" alt="findings" /></p>
+
+<p>After a loadline test of io_depth setting, I just found the figures followed some rules, so using qemu logs, I draw above graph. This is a graph recording the io request intervals sending from qemu to librbd, and catched in librbd logs.</p>
+
+<p>As we can see, when we set the queue_depth as 8, the first io request has quite small interval(0.075ms), but the interval between the 8th and 9th io request is pretty long(1.6ms). And if we set the queue_depth as 16, or 32. The burst interval happened just between the 16th to 17th, and 32th to 33th respectively.</p>
+
+<p>So there comes the deduction:
+Queue will send out all requests, then wait the last request completes . After that it starts to send out new queue.</p>
+
+<h2>How to prove it?</h2>
+
+<h3>Methodology:</h3>
+
+<ol>
+<li>. Set queue depth = 64</li>
+<li>. make the 42th request sleep 3s in completion thread</li>
+</ol>
+
+
+<h3>&mdash;> If RBD waits 3s then receives the 65th requests, we can confirm the deduction.</h3>
+
+<h3>How to do this?</h3>
+
+<p>There is a function in librbd named C_AioRead::finish in AioCompletion.cc, so what we need to do is just randomly block this function for 3s, and see what happens.</p>
+
+<p><img src="/images/AIO_vs_FIO/2.png" alt="proving" /></p>
+
+<p>Aha! The results just show as what we expect.</p>
+
+<h3>But there are still 3 possibilities can produce result like this.</h3>
+
+<p>1.Wrong workload setting?
+2.Ceph RBD design ?  if there is some lock in finish thread that blocks the submit thread
+3.Virtio ?</p>
+
+<p>The situation produced by FIO</p>
+
+<p><img src="/images/AIO_vs_FIO/3.png" alt="proving" /></p>
+
+<p>From this graph, we can see the result is really different by using aio-stress, which can help us to exclude last two possibilities. That means we must do some wrong setting in aio-stress or aio-stress just have some wierd strategy design.</p>
+
+<p>Also we can see the difference in logs.</p>
+
+<p><img src="/images/AIO_vs_FIO/4.png" alt="proving" /></p>
+
+<p><code>Here I will add some aio-stress codes digging into soon, just not now~ Sorry</code></p>
+
+<hr>
+
+
+<p>The right setting for random io in aio-stress to act more meet our demand (Here I said random io is because this setting may result in no io merge in sequential io)</p>
+
+<p><code>console
+./aio-stress -O -o 3 -i 1 -d 64 -r4k -s 4m /dev/vdb
+</code></p>
+
+<p><img src="/images/AIO_vs_FIO/5.png" alt="proving" /></p>
+
+<p><img src="/images/AIO_vs_FIO/6.png" alt="proving" /></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ObjectCacher: RBD Cache Codes]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes/"/>
+    <updated>2013-11-15T00:58:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes</id>
+    <content type="html"><![CDATA[<p>There is some cache mechanism in Ceph RBD.
+And it is now in memory cache which supports write through and write back.</p>
+
+<p>In this post, I would post what I have learnt from ObjectCacher codes.</p>
+
+<h2>How to deploy RBD Cache</h2>
+
+<p>there is a really clear instruction in ceph.com, just linked here <code><a href="http://ceph.com/docs/master/rbd/rbd-config-ref/?highlight=rbd%20cache">Ceph RBD Cache setting</a></code></p>
+
+<h2>How to record log from RBD</h2>
+
+<p>There is a little tricky to record log in RBD sides, because if you simply add the log settings in ceph.conf, you can only get logs when you do something using &ldquo;rbd&rdquo; command, like &ldquo;rbd lspools&rdquo;, etc. So simply adding log settings in ceph.conf(client side) can not help you to get logs from QEMU to librbd, the reason is unknown to me, but I just find a way to walk around this.</p>
+
+<p>All you need to do is to add log setting in you instance.xml, then using libvirt to boot this instance or also you can just attach a new disk by using xml like below.</p>
+
+<p>``` xml disk.xml</p>
+
+<pre><code>&lt;disk type='network' device='disk'&gt;
+  &lt;driver name='qemu' type='raw' cache='none'/&gt;
+  &lt;source protocol='rbd' name='xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_file=/tmp/qemu-rbd.log'/&gt;
+  &lt;target dev='vdb' bus='virtio'/&gt;
+  &lt;serial&gt;12f70341-d199-4fca-9270-56e5d6b80061&lt;/serial&gt;
+  &lt;alias name='virtio-disk1'/&gt;
+  &lt;address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/&gt;
+&lt;/disk&gt;
+</code></pre>
+
+<p>```</p>
+
+<p>After attach this disk, you can find logs in /tmp/qemu-rbd.log or you can just write to qemu log.</p>
+
+<p>``` xml write log to /var/libvirt/qemu/xxxxx(instance_name).log</p>
+
+<pre><code>  &lt;source protocol='rbd' name='xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_to_stderr=true'/&gt;
+</code></pre>
+
+<p>```
+There is a really clear codes path we can find from logs, so just using log to debug or hack into the rbd codes.</p>
+
+<h2>Dig into the codes</h2>
+
+<p>If we enable rbd cache in ceph.conf(client side), the ObjectCacher object is created when this rbd image attach to the vm.
+Here is the overview.</p>
+
+<p><img src="/images/RBD_Cache/overview.png" width=60%></p>
+
+<p>From above we can see each RBD has a object to store all information name ImageCtx(image context), so there is only one ObjectCacher in one RBD cache and also different RBD images can not share their cache till now.</p>
+
+<p>ObjectCacher uses poolid, oid(objectid), then offset and length to index cache in memory.</p>
+
+<p>Then here is a graph to show how ceph using ObjectCacher.</p>
+
+<p><img src="/images/RBD_Cache/workflow_send_req.png" width=100%></p>
+
+<p><img src="/images/RBD_Cache/workflow_recv_req.png" width=50%></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Cache &amp; Consistency]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/cache-and-consistency/"/>
+    <updated>2013-11-15T00:55:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/cache-and-consistency</id>
+    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this week</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Study of Data distribution methods--Crush]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method/"/>
+    <updated>2013-11-15T00:51:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method</id>
+    <content type="html"><![CDATA[<p>wanna learn, mark here</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Device-Mapper deep dive]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/"/>
+    <updated>2013-11-14T19:40:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive</id>
+    <content type="html"><![CDATA[<p>I used to stuck in all these terms and concepts for like really long time, just trying to get everything clear by writing.</p>
+
+<h2>Storage subsystem</h2>
+
+<h3>Overview</h3>
+
+<p><img src="/images/dm_deep_dive/overview.png" alt="overview" width=80%></p>
+
+<p>BIO is the unit to map data in the memory to generic block offset.
+When generic block layer gets bio units, it calls io scheduler to combine bios into request to specific device.
+Then requests can be sent to real device or virtual block device like software raid or logic volume(using MD or Device Mapper modules).</p>
+
+<p><img src="/images/dm_deep_dive/bio.png" alt="bio" width=80%></p>
+
+<p>Actually BIO units point to a much smaller unit named bio_vec which is the exactly unit point to the memory, and BIO also has one field record which block device and which sector it wanna to read/write.(Notice, the block device here is kind of a generic idea, could be some virtual block device)</p>
+
+<p>The smart use of bio_vec help kernel to support scatter/Gather I/O, so that BIO can map some scatter part in mem to some continuous part in block device.</p>
+
+<p><img src="/images/dm_deep_dive/request.png" alt="request" width=80%></p>
+
+<p>When BIO unit received by generic block layer, kernel will do some &ldquo;merge and sort&rdquo; operations then hand the combined BIOs to block device. All these work can be done in the IO scheduler layer and then all BIO units are combined into one and one request, which also be linked by a pointer named &ldquo;request_queue&rdquo; store in bdev struct(gendisk).</p>
+
+<p>Then the whole idea is pretty clear, there is a picture shows some important function to translate a fs syscall into requests to block devices.</p>
+
+<p><img src="/images/dm_deep_dive/functions.png" alt="functions" width=50%></p>
+
+<p>Submit_bio is a generic api to submit bio to generic block layer(of course by its name&hellip;)</p>
+
+<p>generic_make_request puts BIO into bio_list, then __generic_make_request will see if this bio is suitable to make request or it is delivered to some stack device like Device Mapper(in this situation, __generic_make_request will produce a new bio and call generic_make_request).</p>
+
+<p>__make_request_fn() then pus BIO into request_queue, if this function returns 0, the BIO is delivered to the real block device, or it may continues to call __make_request_fn until it delivered to real block device(like Device Mapper).</p>
+
+<p>In fact, the request_queue also will not be directly tackled by block device, the device will use some method named &ldquo;Plugging/Unplugging&rdquo; to tackles these requests.</p>
+
+<p><img src="/images/dm_deep_dive/structures.png" alt="structures" width=50%></p>
+
+<p>Now let&rsquo;s see a linked graph of some important structs in block-level subsystem. Every block device has a field named gendisk(generic disk), and generic disk has a field to record its request_queue, and since each type of block device has its own implementation of read and write, the gendisk also has a field named private_data to point to the corresponding block device(also, the block device can be real or virtual).</p>
+
+<h2>Then, after all the general idea of block-layer subsystem, let&rsquo;s talk about <code>Device Mapper</code></h2>
+
+<h3>What is Device-Mapper</h3>
+
+<ul>
+<li>A block device mapping facility available in Linux Kernel.</li>
+<li>A component required by LVM2 to support the mapping between logical volumes and physical storage devices.</li>
+<li>Device-mapper provides a generic way to create virtual layers of block devices that can do different things on top of real block devices like striping, concatenation, mirroring, snapshotting, etc&hellip;</li>
+</ul>
+
+
+<h3>Here is the Usecase</h3>
+
+<p>Before lv creation</p>
+
+<p><img src="/images/dm_deep_dive/Before lv creation.png" alt="Before lv creation" width=40%></p>
+
+<p>After lv creation</p>
+
+<p><img src="/images/dm_deep_dive/after lv creation.png" alt="after lv creation" width=40%></p>
+
+<p>The thing should notice here is that a dm-0 device in /sys/block is created, which indicates that Logic Volume is a &ldquo;device mapper&rdquo; device.</p>
+
+<p><img src="/images/dm_deep_dive/after lv creation2.png" alt="after lv creation" width=40%></p>
+
+<h3>another device mapper usecase</h3>
+
+<p><img src="/images/dm_deep_dive/dm_usecase2.png" alt="dm_usecase2" width=60%></p>
+
+<h3>Here is the Device Mapper Overview</h3>
+
+<p><img src="/images/dm_deep_dive/dm_overview.png" alt="dm_overview" width=50%></p>
+
+<p><img src="/images/dm_deep_dive/dm_struct.png" alt="dm_struct" width=50%></p>
+
+<p>DM Devices in Ubuntu 12.10,kernel 3.6.3</p>
+
+<p><img src="/images/dm_deep_dive/dm_targets.png" alt="dm_targets" width=50%></p>
+
+<p>Linear Device target-type example</p>
+
+<p>``` c linear-device-struct
+static struct target_type linear_target = {   </p>
+
+<pre><code>.name   = "linear",   
+.version = {1, 1, 0},   
+.module = THIS_MODULE,   
+.ctr    = linear_ctr,   
+.dtr    = linear_dtr,   
+.map    = linear_map,   
+.status = linear_status,   
+.ioctl  = linear_ioctl,   
+.merge  = linear_merge,   
+.iterate_devices = linear_iterate_devices,
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>Let&rsquo;s see the codes</h3>
+
+<p>``` c How DM handle the device creation command?
+int dm_create(int minor, struct mapped_device <em>*result){
+     struct mapped_device </em>md;</p>
+
+<pre><code>    md = alloc_dev(minor);       
+if (!md)             
+    return -ENXIO;     
+dm_sysfs_init(md);       
+*result = md;    
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>``` c How DM handle the read/write command?
+static void dm_request(struct request_queue <em>q, struct bio </em>bio)
+{</p>
+
+<pre><code>struct mapped_device *md = q-&gt;queuedata;
+
+if (dm_request_based(md))
+    blk_queue_bio(q, bio);  //Using dm_target rules to reconstruct the bio
+else
+    _dm_request(q, bio);    //split and process this bio
+</code></pre>
+
+<p>}
+```</p>
+]]></content>
+  </entry>
+  
+</feed>
