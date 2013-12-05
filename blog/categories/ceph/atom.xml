@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ceph | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/ceph/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-12-05T13:56:35+08:00</updated>
+  <updated>2013-12-05T14:05:02+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -55,8 +55,6 @@ index d34bb9c..6c308d3 100644
 ```</p>
 
 <p>Current Ceph Version only enabled admin_socket in Ceph Cluster Side, so we need to enable it in RBD side.</p>
-
-<p>//XIAOXI,在ImageCTX里面增加的那句代码我找不到了，你如果可以找到发我一下</p>
 
 <p><2> dump the data</p>
 
