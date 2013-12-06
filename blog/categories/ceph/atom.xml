@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ceph | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/ceph/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-12-04T21:29:29+08:00</updated>
+  <updated>2013-12-05T14:05:02+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -12,6 +12,116 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[How to do Ceph Latency Breakdown]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown/"/>
+    <updated>2013-12-05T10:38:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown</id>
+    <content type="html"><![CDATA[<h2>The Ceph Latency Breakdown process includes 3 steps:</h2>
+
+<h3>1. Enable Log Configuration or Other performance count mechanism to record the runtime infomation.</h3>
+
+<h3>2. Produce the workload and meanwhile dump the perfcounter</h3>
+
+<h3>3. Parse the perfcounter dump data</h3>
+
+<h2>Details:</h2>
+
+<p>In ceph, a perfcounter mechanism has been adopted to do the latency breakdown, and the runtime info can be dumped by the admin_socket is an internal implementation in Ceph.</p>
+
+<p>example:</p>
+
+<p><1> codes
+``` c git diff
+diff &mdash;git a/src/osd/OSD.cc b/src/osd/OSD.cc
+index d34bb9c..6c308d3 100644
+&mdash;&ndash; a/src/osd/OSD.cc
++++ b/src/osd/OSD.cc
+@@ -7055,10 +7055,10 @@ PGRef OSD::OpWQ::_dequeue()</p>
+
+<p> void OSD::OpWQ::_process(PGRef pg, ThreadPool::TPHandle &amp;handle)
+ {
+&ndash;  utime_t pg_lock_lat = ceph_clock_now(g_ceph_context);
++  utime_t start = ceph_clock_now(g_ceph_context);
+   pg->lock_suspend_timeout(handle);
+&ndash;  pg_lock_lat = ceph_clock_now(g_ceph_context) &ndash; pg_lock_lat;
+&ndash;  osd->logger->tinc(l_osd_pg_lock_lat, pg_lock_lat);
++  utime_t end = ceph_clock_now(g_ceph_context);
++  osd->logger->tinc(l_osd_pg_lock_lat, end &ndash; start);</p>
+
+<p>   OpRequestRef op;
+   {
+```</p>
+
+<p>Current Ceph Version only enabled admin_socket in Ceph Cluster Side, so we need to enable it in RBD side.</p>
+
+<p><2> dump the data</p>
+
+<p>``` bash ceph.conf</p>
+
+<h1>Enable the admin_socket in QEMU RBD</h1>
+
+<p>check ceph.conf
+perf = false
+&ndash;></p>
+
+<h1>perf = false</h1>
+
+<p>```</p>
+
+<p>```xml QEMU disk.xml</p>
+
+<pre><code>&lt;disk type='network' device='disk'&gt;
+  &lt;driver name='qemu' type='raw' cache='none'/&gt;
+  &lt;source protocol='rbd' name='xcd_8osd/volume-3:admin_socket=/var/run/ceph/node5_1.asok'/&gt;
+  &lt;target dev='vdb' bus='virtio'/&gt;
+  &lt;serial&gt;12f70341-d199-4fca-9270-56e5d6b80061&lt;/serial&gt;
+  &lt;alias name='virtio-disk1'/&gt;
+  &lt;address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/&gt;
+&lt;/disk&gt;
+</code></pre>
+
+<p><code>
+</code> console
+virsh attach instance1 disk.xml</p>
+
+<p>ceph &mdash;admin-daemon /var/run/ceph/${osd} perf dump >> ${osd}.txt
+```</p>
+
+<hr>
+
+
+<h2>Below is the summary of all scripts:</h2>
+
+<p><a href ="/downloads/Ceph_Latency_Breakdown_Script.zip"><code style="font-family: 'Fjalla One','Georgia','Helvetica Neue',Arial,sans-serif;font-weight:900;font-size:12px;">download the script</code></a></p>
+
+<h3>Script to mkceph:(in the dir &ldquo;mkceph&rdquo;)</h3>
+
+<p>mkceph_with_pg.sh</p>
+
+<h3>Script to produce workload:(all put in the dir &ldquo;run the test&rdquo;)</h3>
+
+<p><b>run.sh</b>: aim to change the <code>ceph.conf</code> op thread number setting, then restart ceph, vm, and call <code>test.sh</code> to start the test. The test result will then be stored in the path &ldquo;/data/xcd/ceph-CephXCD/run_${id}&rdquo;</p>
+
+<p><b>test.sh</b>: aim to clean run a vm_num loadline test, call <code>mhost-volume-test-xcd.sh</code> to run the actual test</p>
+
+<p><b>mhost-volume-test-xcd.sh</b>: calls <code>clean_cache_on_ceph.sh</code>,<code>check_readahead.sh</code>, <code>volume-test_in_vm.sh</code>, <code>all.fio</code>, <code>volume-test_in_pc.sh</code>, <code>ceph_perf_counter_dump.sh</code>, <code>volume-test_in_ceph.sh</code>, <code>check_cephHealth.sh</code> to run the test(producing workload and collecting runtime system info &amp; ceph info), then collects all the data back to the Node1.
+```console</p>
+
+<h1>example:</h1>
+
+<p>./mhost-volume-test-xcd.sh 1 $vm_num 3 4k &ldquo;vmNum_&rdquo;$vm_num ${qd} node13_net
+```
+tip: There is a VM list stored in file &ldquo;node13_net&rdquo;</p>
+
+<h3>Script to parse the data:</h3>
+
+<p><b>getLatbreakdown.sh</b>: aim to parse latency data from <code>*.asok</code> files using <code>post_perf.py</code></p>
+
+<p><b>getResult.sh</b>: aim to parse iostat, mpstat data. It calls <code>post_volume_xcd.sh</code>, <code>post_osd.sh</code>, <code>post_cpu.sh</code>, <code>iostat.sh</code></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[AIO-STRESS vs. FIO]]></title>
