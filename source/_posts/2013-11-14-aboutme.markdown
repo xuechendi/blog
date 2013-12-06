@@ -1,0 +1,11 @@
+---
+layout: post
+title: "aboutme"
+date: 2013-11-14 11:01
+comments: true
+categories: 
+---
+
+Hi, This is Chendi.Xue, a girl from China and have huge interest in Storage.
+I am building this website to share stuff I am into.
+Please feel free to contact me in any reason ~
