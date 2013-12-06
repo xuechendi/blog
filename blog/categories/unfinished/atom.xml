@@ -4,7 +4,7 @@
   <title><![CDATA[Category: unfinished | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/unfinished/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-12-06T21:26:59+08:00</updated>
+  <updated>2013-12-06T22:43:29+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -19,15 +19,6 @@
     <updated>2013-11-15T01:00:00+08:00</updated>
     <id>http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes</id>
     <content type="html"><![CDATA[<p>Working in Progress, will be finished by this weekend</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Cache &amp; Consistency]]></title>
-    <link href="http://xuechendi.github.io/blog/2013/11/15/cache-and-consistency/"/>
-    <updated>2013-11-15T00:55:00+08:00</updated>
-    <id>http://xuechendi.github.io/blog/2013/11/15/cache-and-consistency</id>
-    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this week</p>
 ]]></content>
   </entry>
   
