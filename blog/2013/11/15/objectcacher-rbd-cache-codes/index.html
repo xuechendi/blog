@@ -121,7 +121,7 @@ And it is now in memory cache which supports write through and write back.</p>
 
 <h2>How to record log from RBD</h2>
 
-<p>There is a little tricky to record log in RBD sides, because if you simply add the log settings in ceph.conf, you can only get logs when you do something using &ldquo;rbd&rdquo; command, like &ldquo;rbd lspools&rdquo;, etc. So simply adding log settings in ceph.conf(client side) can not help you to get logs from QEMU to librbd, the reason is unknown to me, but I just find a way to walk around this.</p>
+<p>There is a little tricky to record log in RBD sides, because if you simply add the log settings in ceph.conf, you can only get logs when you do something using &ldquo;rbd&rdquo; command, (I just cannot remember what is the exact command, will add this later ), etc. So simply adding log settings in ceph.conf(client side) can not help you to get logs from QEMU to librbd, the reason is unknown to me, but I just find a way to walk around this.</p>
 
 <p>All you need to do is to add log setting in you instance.xml, then using libvirt to boot this instance or also you can just attach a new disk by using xml like below.</p>
 
