@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-12-07T18:04:59+08:00</updated>
+  <updated>2013-12-07T19:04:34+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -18,7 +18,7 @@
     <link href="http://xuechendi.github.io/blog/2013/12/07/fusion-io/"/>
     <updated>2013-12-07T15:27:00+08:00</updated>
     <id>http://xuechendi.github.io/blog/2013/12/07/fusion-io</id>
-    <content type="html"><![CDATA[<p><embed src='http://xuechendi.github.io/slides/fusion-io' allowFullScreen='true' width='950' height='640' align='middle'></embed></p>
+    <content type="html"><![CDATA[<p><embed src='http://xuechendi.github.io/slides/fusion-io' allowFullScreen='true' width='100%' height='640' align='middle'></embed></p>
 ]]></content>
   </entry>
   
