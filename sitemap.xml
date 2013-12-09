@@ -2,6 +2,7 @@
 <urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
     <url>
         <loc>http://xuechendi.github.io/blog/2013/11/13/first-post-to-octopress/</loc>
+<<<<<<< HEAD
         <lastmod>2013-12-05T10:31:26+08:00</lastmod>
     </url>
     <url>
@@ -15,11 +16,27 @@
     <url>
         <loc>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/</loc>
         <lastmod>2013-12-05T10:31:26+08:00</lastmod>
+=======
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/11/14/aboutme/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/11/14/resume/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+>>>>>>> 580a280d63f74c670a37aec754dada34ac496e89
     </url>
     <url>
         <loc>
             http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method/
         </loc>
+<<<<<<< HEAD
         <lastmod>2013-12-05T10:31:26+08:00</lastmod>
     </url>
     <url>
@@ -61,6 +78,57 @@
     <url>
         <loc>http://xuechendi.github.io/robots.txt</loc>
         <lastmod>2013-12-05T10:31:36+08:00</lastmod>
+=======
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes/</loc>
+        <lastmod>2013-12-07T22:28:56+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/11/15/system-analysis-and-tools/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/11/18/just-some-paitings-on-openstack/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/12/04/drbd-and-heartbeat/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/12/06/Graduate-design-draft/</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/12/07/fusion-io/</loc>
+        <lastmod>2013-12-07T19:44:42+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/404.html</loc>
+        <lastmod>2013-12-06T21:49:20+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/archives/</loc>
+        <lastmod>2013-12-07T22:28:56+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/</loc>
+        <lastmod>2013-12-07T22:28:56+08:00</lastmod>
+>>>>>>> 580a280d63f74c670a37aec754dada34ac496e89
     </url>
     <url>
         <loc>http://xuechendi.github.io/404.html</loc>
@@ -69,5 +137,9 @@
     <url>
         <loc>http://xuechendi.github.io/</loc>
         <lastmod>2013-12-05T14:04:55+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/slides/fusion-io/</loc>
+        <lastmod>2013-12-07T18:38:11+08:00</lastmod>
     </url>
 </urlset>
