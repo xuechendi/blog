@@ -1,0 +1,9 @@
+---
+layout: post
+title: "Fusion-io"
+date: 2013-12-07 15:27
+comments: true
+categories: 
+---
+{% reveal /slides/fusion-io 100 640 %}
+Powered by <a href="http://lab.hakim.se/reveal-js/#/1" target="_blank">Reveal.js</a>
