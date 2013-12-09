@@ -42,9 +42,11 @@ h4, section h3, section section h2, section section section h1 {
 }
 h5, section h4, section section h3 {
   font-size: .9em;
+  margin-bottom: 0em;
 }
 h6, section h5, section section h4, section section section h3 {
   font-size: .8em;
+  margin-bottom: 0em;
 }
 
 p, article blockquote, ul, ol { margin-bottom: 1.5em; }
@@ -148,6 +150,7 @@ article blockquote {
 
 p {
   font-family: $sans; 
+  font-size:16px;
 }
 
 a {
