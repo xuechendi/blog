@@ -119,7 +119,7 @@ A heartbeat is a periodic communication attempt to check for updated policies.
 
 Heartbeat仅仅是个HA软件，它仅能完成心跳监控和资源接管，不会监视它控制的资源或应用程序。要监控资源和应用程序是否运行正常，必须使用第三方的插件，例如ipfail、Mon和Ldirector等。Heartbeat自身包含了几个插件，分别是ipfail、Stonith和Ldirectord，介绍如下。
 
-ipfail的功能直接包含在Heartbeat里面，主要用于检测网络故障，并做出合理的反应。为了实现这个功能，ipfail使用ping节点或者ping节点组来检测网络连接是否出现故障，从而及时做出转移措施。
+ipfail的功能直接包含在Heartbeat里面，主要用于检测网络故障，并做出合理的反应。为了实现这个功能，ipfail使用ping节点或者ping节点组来检测网络连接是否出现故障，从而及时做出转移措施。Linux内核不仅为各种不同类型的watchdog硬件电路提供了驱动。
 
 Stonith插件可以在一个没有响应的节点恢复后，合理接管集群服务资源，防止数据冲突。当一个节点失效后，会从集群中删除。如果不使用Stonith插件，那么失效的节点可能会导致集群服务在多于一个节点运行，从而造成数据冲突甚至是系统崩溃。因此，使用Stonith插件可以保证共享存储环境中的数据完整性。
 
@@ -129,4 +129,36 @@ Ldirector是一个监控集群服务节点运行状态的插件。Ldirector如�
 
 在Linux中完成watchdog功能的软件叫softdog。softdog维护一个内部计时器，此计时器在一个进程写入/dev/watchdog设备文件时更新。如果softdog没有看到进程写入/dev/watchdog文件，就认为内核可能出了故障。watchdog超时周期默认是一分钟，可以通过将watchdog集成到Heartbeat中，从而通过Heartbeat来监控系统是否正常运行。
 
+####Linux下watchdog的工作原理
 
+Watchdog在实现上可以是硬件电路也可以是软件定时器，能够在系统出现故障时自动重新启动系统。在Linux 内核下, watchdog的基本工作原理是：当watchdog启动后(即/dev/watchdog 设备被打开后)，如果在某一设定的时间间隔内/dev/watchdog没有被执行写操作, 硬件watchdog电路或软件定时器就会重新启动系统。
+
+/dev/watchdog 是一个主设备号为10， 从设备号130的字符设备节点。 Linux内核不仅为各种不同类型的watchdog硬件电路提供了驱动，还提供了一个基于定时器的纯软件watchdog驱动。 驱动源码位于内核源码树drivers\char\watchdog\目录下。
+
+####硬件与软件watchdog的区别
+
+硬件watchdog必须有硬件电路支持, 设备节点/dev/watchdog对应着真实的物理设备， 不同类型的硬件watchdog设备由相应的硬件驱动管理。软件watchdog由一内核模块softdog.ko 通过定时器机制实现，/dev/watchdog并不对应着真实的物理设备，只是为应用提供了一个与操作硬件watchdog相同的接口。
+
+硬件watchdog比软件watchdog有更好的可靠性。 软件watchdog基于内核的定时器实现，当内核或中断出现异常时，软件watchdog将会失效。而硬件watchdog由自身的硬件电路控制, 独立于内核。无论当前系统状态如何，硬件watchdog在设定的时间间隔内没有被执行写操作，仍会重新启动系统。
+
+一些硬件watchdog卡如WDT501P 以及一些Berkshire卡还可以监测系统温度，提供了 /dev/temperature接口。 对于应用程序而言, 操作软件、硬件watchdog的方式基本相同：打开设备/dev/watchdog, 在重启时间间隔内对/dev/watchdog执行写操作。即软件、硬件watchdog对应用程序而言基本是透明的。
+
+在任一时刻， 只能有一个watchdog驱动模块被加载，管理/dev/watchdog 设备节点。如果系统没有硬件watchdog电路，可以加载软件watchdog驱动softdog.ko。
+
+###heartbeat.conf
+
+#####心跳方式：ucast,mcast,serial
+#####debugfile /var/log/ha-debug:该文件保存 heartbeat 的调试信息
+#####logfile /var/log/ha-log:heartbeat 的日志文件
+#####keepalive 2:心跳的时间间隔,默认时间单位为秒
+#####deadtime 30:超出该时间间隔未收到对方节点的心跳,则认为对方已经死亡。
+#####warntime 10:超出该时间间隔未收到对方节点的心跳,则发出警告并记录到日志中。
+#####initdead 120:在某些系统上,系统启动或重启之后需要经过一段时间网络才能正常工作,
+#####该选项用于解决这种情况产生的时间间隔。取值至少为 deadtime 的两倍。
+#####udpport 694:设置广播通信使用的端口,694 为默认使用的端口号。
+#####baud 19200:设置串行通信的波特率。
+#####serial /dev/ttyS0:选择串行通信设备,用于双机使用串口线连接的情况。如果双机使用以太网连接,则应该关闭该选项。
+#####bcast eth0:设置广播通信所使用的网络接口卡。
+#####auto_failback on:heartbeat 的两台主机分别为主节点和从节点。主节点在正常情况下占用资源并运行所有的服务,遇到故障时把资源交给从节点并由从节点运行服务。在该选项设为 on 的情况下,一旦主节点恢复运行,则自动获取资源并取代从节点,否则不取代从节点。
+#####ping ping-node1 ping-node2:指定 ping node,ping node 并不构成双机节点,它们仅仅用来测试网络连接。
+#####respawn hacluster /usr/lib/heartbeat/ipfail:指定与 heartbeat 一同启动和关闭的进程,该进程被自动监视,遇到故障则重新启动。最常用的进程是 ipfail,该进程用于检测和处理网络故障,需要配合ping 语句指定的 ping node 来检测网络连接。
