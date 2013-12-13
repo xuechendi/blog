@@ -162,3 +162,13 @@ Watchdog在实现上可以是硬件电路也可以是软件定时器，能够在
 #####auto_failback on:heartbeat 的两台主机分别为主节点和从节点。主节点在正常情况下占用资源并运行所有的服务,遇到故障时把资源交给从节点并由从节点运行服务。在该选项设为 on 的情况下,一旦主节点恢复运行,则自动获取资源并取代从节点,否则不取代从节点。
 #####ping ping-node1 ping-node2:指定 ping node,ping node 并不构成双机节点,它们仅仅用来测试网络连接。
 #####respawn hacluster /usr/lib/heartbeat/ipfail:指定与 heartbeat 一同启动和关闭的进程,该进程被自动监视,遇到故障则重新启动。最常用的进程是 ipfail,该进程用于检测和处理网络故障,需要配合ping 语句指定的 ping node 来检测网络连接。
+
+<code><http://www.ultramonkey.org/3/linux-ha.html></code>
+
+Linux-HA [offsite] is an open source project to provide flexible a High Availability framework. Its core component is Heartbeat [offsite] which implements a heartbeat-protocol. That is, messages are sent at regular intervals between machines and if a message is not received from a particular machine then the the machine is assumed to have failed and some form of evasive action is taken. Heartbeat can send heartbeat messages over both serial links and ethernet interfaces. Heartbeat is also able to use qourum devices to help determine which nodes should be active,this is done using the ipfail plugin.
+
+When heartbeat is configured, a master node is selected. When heartbeat starts up this node sets up an interface for a virtual IP address, that will be accessed by external end users. If this node fails then another node in the heartbeat cluster will start up an interface for this IP address and use gratuitous ARP to ensure that all traffic bound for this address is received by this machine. This method of fail-over is called IP Address Takeover. Unless the auto_failback directive is set to off in the ha.cf file, once the master node becomes available again resources will fail-over again so they are once again owned by the master node.
+
+Each virtual IP address is considered to be a resource. Resources are encapsuated as programes that work similarly to unix init scripts, that is the resource can be started and stopped, and its can be asked if it is running or not. In this way ~eartbeat is able to start and stop resources depending on the status of the other node that it is communicating with using the heartbeat-protocol. As the resources are encapsulated as programmes, arbitary resources may be used.
+
+<code><http://hi.baidu.com/leolance/item/26e1943543e873342e0f8142></code>
