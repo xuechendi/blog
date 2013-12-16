@@ -56,7 +56,7 @@
         <h2>Components</h2>
         <img alt="HA components" src="/images/HA/ha_internals.png">
         <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
-            <p>This is a components graph like we described in last slide, and here we also should mention is tHAt:</p>
+            <p>This is a components graph like we described in last slide, and here we also should mention is that:</p>
             <p>Since &#8220;Heartbeat&#8221; project is now in its third virsion and pacemaker is now being a independent project mainly responsible for the CRM part.</p>
             <p>Heartbeat itself is more controled the messaging & membership part, and an other project named corosync is also a strong candidate to do the messaging and membership work. </p>
             <p>So in this graph, there are three independent projects in different color respectively.</p>
@@ -81,9 +81,9 @@
                 <p>There is two types of Heartbeat: 环形心跳, 广播心跳（Need to find a paper/webpage something to describe this）</p>
                 <p>Two kinds of heartbeat checks: pull heartbeat check request then response, and push I am alive message to other nodes.</p>
                 <p>Two kinds of communication unites: One used to check the aliveness of nodes, one to manage the resources.(Later moved into pacemaker project?)</p>
-                <p>Timeout and retransmission mecHAnism</p>
+                <p>Timeout and retransmission mechanism</p>
             </div>
-            <h6>The communication unit fetched by WiresHArk:</h6>
+            <h6>The communication unit fetched by Wireshark:</h6>
             <img alt="heartbeat units" src="/images/HA/heartbeat_units.png">
         </section>
         <section>
@@ -92,7 +92,7 @@
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left; float:left;">   
                 <strong><h6>Heartbeat is also able to use qourum devices to help determine which nodes should be active,this is done using the ipfail plugin.</h6>
                 <h6>Below is the link to show the difference between with/without ipfail.</h6></strong>
-                <p>In some situation like below, if a pair of hosts HAve physical links on the internal and external network, it may be desirable for fail-over to occur if <code>either</code> physical link fails. </p>
+                <p>In some situation like below, if a pair of hosts have physical links on the internal and external network, it may be desirable for fail-over to occur if <code>either</code> physical link fails. </p>
                 <img alt="heartbeat units" src="/images/HA/without_ipfail.png" style="width:45%">
                 <img alt="heartbeat units" src="/images/HA/with_ipfail.png" style="width:45%">
                 <p>The <a href="http://www.ultramonkey.org/3/ipfail.html" target="_blank">ipfail</a> plugin for heartbeat makes this possible by monitoring one or more external hosts known as a ping node. Typically this would be a router or switch on the local network. The ping node is treated as a quorum device. connectivity to a qourum device is lost, then heartbeat&#8217;s resource manager may triger a failover. In the simple case, if an interface fails on the active linux director, then one of the ping nodes should become unavailable and fail-over will occur.</p>
@@ -103,8 +103,8 @@
             <br>
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
                 <p>When heartbeat is configured, a master node is selected.</p> 
-                <p>When heartbeat starts up this node sets up an interface for a virtual IP address, tHAt will be accessed by external end users. Normally, there will be an interface with the Virtual IP on the master host. </p>
-                <p>If this node fails then another node in the heartbeat cluster will start up an interface for this IP address and use <a href="#" class="navigate-down enabled" >gratuitous ARP</a> to ensure tHAt all traffic bound for this address is received by this machine. This is most conveniently done by adding the virtual IP address an existing interface, or a dedicated interface may also be used. Once the address has been added, the hot stand-by is able to accept traffic, and answer ARP requests for the virtual IP address. </p>
+                <p>When heartbeat starts up this node sets up an interface for a virtual IP address, that will be accessed by external end users. Normally, there will be an interface with the Virtual IP on the master host. </p>
+                <p>If this node fails then another node in the heartbeat cluster will start up an interface for this IP address and use <a href="#" class="navigate-down enabled" >gratuitous ARP</a> to ensure that all traffic bound for this address is received by this machine. This is most conveniently done by adding the virtual IP address an existing interface, or a dedicated interface may also be used. Once the address has been added, the hot stand-by is able to accept traffic, and answer ARP requests for the virtual IP address. </p>
                 <p>This method of fail-over is called <a href="http://www.ultramonkey.org/3/ip_address_takeover.html" target="_blank">IP Address Takeover</a>. </p>
                 <p>Unless the auto_failback directive is set to off in the HA.cf file, once the master node becomes available again resources will fail-over again so they are once again owned by the master node.</p>
             </div>
@@ -114,25 +114,27 @@
             <br>
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left; float:left;">   
                 <p>A gratuitous ARP is an ARP reply when there was no ARP request. By adopting this method, the ARP cache on the router and hosts&#8217; cache can be refreshed. </p>
-                <p>In order to be compatible for most HArdware, there are 2 types of gratutious ARP, like below: </p>
-                <p>1. Sending ARP <b style="color:red">reply</b> to the broadcast HArdware address then all hosts on the LAN will receive the ARP reply and refresh their ARP cache. </p>
-                <p>2. Sending an ARP <b style="color:red">request</b> for itself then all hosts on the LAN will refresh their ARP caches using the source HArdware address of this request. </p>
-                <img alt="Gratutious ARP response" src="/images/HA/garp-rsp.png">
-                <img alt="Gratutious ARP request" src="/images/HA/garp-req.png">
+                <p>In order to be compatible for most hardware, there are 2 types of gratutious ARP, like below: </p>
+                <p>1. Sending ARP <b style="color:red">reply</b> to the broadcast hardware address then all hosts on the LAN will receive the ARP reply and refresh their ARP cache. </p>
+                <p>2. Sending an ARP <b style="color:red">request</b> for itself then all hosts on the LAN will refresh their ARP caches using the source hardware address of this request. </p>
             </div>
+            <img alt="Gratutious ARP response" src="/images/HA/garp-rsp.png">
+            <p style="font-size:16px;">Gratutious ARP response</p>
+            <img alt="Gratutious ARP request" src="/images/HA/garp-req.png">
+            <p style="font-size:16px;">Gratutious ARP request</p>
         </section>
         <section>
             <h2>Heartbeat Modules</h2>
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
                 <p>There is 4 kinds of process in Heartbeat deamon, so heartbeat can communicate the states info among heartbeat nodes in right sequence. The processes are Master Process, FIFO child, read child, write child.</p>
-                <p>There can be more tHAn one pair of read and write child process in Heartbeat deamon to watch all of the communication channels.</p>
+                <p>There can be more than one pair of read and write child process in Heartbeat deamon to watch all of the communication channels.</p>
             </div>
         </section>
         <section>
             <h2>Heartbeat conf</h2>
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
                 <h4>Referrence:</h4>
-                <h5>1. <a href="http://www.ultramonkey.org/3/topologies/config/HA/single/real-server/ha.cf" target="_blank">ha.cf on Webpage</a></h5>
+                <h5>1. <a href="http://www.ultramonkey.org/3/topologies/config/ha/single/real-server/ha.cf" target="_blank">ha.cf on Webpage</a></h5>
                 <h5>2. <a href="/images/HA/ha.cf.txt" target="_blank">man ha.cf</a></h5>
                 <hr>
                 <p>心跳方式：ucast,mcast,serial</p>
@@ -148,7 +150,7 @@
                 <p>bcast eth0:设置广播通信所使用的网络接口卡。</p>
                 <p>auto_failback on:heartbeat 的两台主机分别为主节点和从节点。主节点在正常情况下占用资源并运行所有的服务,遇到故障时把资源交给从节点并由从节点运行服务。在该选项设为 on 的情况下,一旦主节点恢复运行,则自动获取资源并取代从节点,否则不取代从节点。<p>
                 <p>ping ping-node1 ping-node2:指定 ping node,ping node 并不构成双机节点,它们仅仅用来测试网络连接。</p>
-                <p>respawn HAcluster /usr/lib/heartbeat/ipfail:指定与 heartbeat 一同启动和关闭的进程,该进程被自动监视,遇到故障则重新启动。最常用的进程是 ipfail,该进程用于检测和处理网络故障,需要配合ping 语句指定的 ping node 来检测网络连接。</p>
+                <p>respawn hacluster /usr/lib/heartbeat/ipfail:指定与 heartbeat 一同启动和关闭的进程,该进程被自动监视,遇到故障则重新启动。最常用的进程是 ipfail,该进程用于检测和处理网络故障,需要配合ping 语句指定的 ping node 来检测网络连接。</p>
             </div>
         </section>
     </section>
@@ -172,7 +174,7 @@
         <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
             <p>ClusterInformationBase (aka CIB) is the component which stores information about the cluster. The CIB uses XML to represent both the cluster’s configuration and current state of all resources in the cluster. The contents of the CIB are automatically kept in sync across the entire cluster and are used by the PEngine to compute the ideal state of the cluster and how it should be achieved.</p>
             <p>The ClusterResourceManagerDaemon (CRMD) runs on every node and coordinates the actions of all other cluster resource managers.This list of instructions is then fed to the DC (Designated Co-ordinator). Pacemaker centralizes all cluster decision making by electing one of the CRMd instances to act as a master. Should the elected CRMd process, or the node it is on, fail… a new one is quickly established.</p>
-            <p>The PolicyEngine (PE) module is the one who performs computation to describe the actions and their dependencies necessary to go from the current cluster state to the target cluster state, then it passes these actions to Transitioner,which communicates with the LocalResourceManager on every node and informs about the actions decided by PE (start, stop resources). The peer nodes all report the results of their operations back to the DC and based on the expected and actual results, will either execute any actions tHAt needed to wait for the previous one to complete, or abort processing and ask the PEngine to recalculate the ideal cluster state based on the unexpected results.</p>
+            <p>The PolicyEngine (PE) module is the one who performs computation to describe the actions and their dependencies necessary to go from the current cluster state to the target cluster state, then it passes these actions to Transitioner,which communicates with the LocalResourceManager on every node and informs about the actions decided by PE (start, stop resources). The peer nodes all report the results of their operations back to the DC and based on the expected and actual results, will either execute any actions that needed to wait for the previous one to complete, or abort processing and ask the PEngine to recalculate the ideal cluster state based on the unexpected results.</p>
             <p>stonithd</p>
         </div>
     </section>
