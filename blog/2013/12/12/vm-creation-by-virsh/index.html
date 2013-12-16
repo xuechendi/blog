@@ -1,0 +1,519 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>VM Creation by Virsh - XueChendi</title>
+  <meta name="author" content="Chendi.Xue">
+
+  
+  <meta name="description" content="xml setting could be like below: libvirt.xml1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+&lt &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="XueChendi" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+
+<body>
+	<div class="container">
+		<aside class="left">
+			<div class="inner-left">
+				<header>
+					<img src="/xuechendi.jpg?s=200" alt="Gravatar of Chendi.Xue " title="Gravatar of Chendi.Xue" class="profilepic" />
+<hgroup>
+  <h1><a href="/">XueChendi</a></h1>
+  
+    <h2 class="subtitle">Keep Simple, Keep Effecient</h2>
+   
+</hgroup>
+
+
+				</header>
+				<footer>
+					<p>
+	<a href="https://facebook.com/xuechendi" class="btn btn-dark">Facebook</a>
+	<a href="http://cn.linkedin.com/pub/chendi-xue/5b/935/b36/" class="btn btn-dark">Linkedin</a>
+</p>
+
+				</footer>
+			</div>
+		</aside>
+    	<section class="right">
+    		<div class="inner-right">
+                        <nav role="navigation">
+                                <ul class="subscription" data-subscription="rss">
+  <li class="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:xuechendi.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/#posts">About Me</a></li>
+  <li><a href="/blog/2013/11/14/resume/">Resume</a></li>
+  <li><a href="/blog/archives">Blog</a></li>
+</ul>
+
+
+                        </nav>
+    			<div id="posts">
+    			  	<article class="post">
+    
+  <header>
+    
+      <h1 class="entry-title">VM Creation by Virsh</h1>
+    
+    
+      <p class="meta">
+        <!--
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-12-12T14:34:00+08:00" pubdate data-updated="true">Dec 12<span>th</span>, 2013</time>-->
+        <!--
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://xuechendi.github.io">Comments</a>
+        -->
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>xml setting could be like below:</h3>
+
+<figure class='code'><figcaption><span>libvirt.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;domain</span> <span class="na">type =</span><span class="s">&quot;kvm&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;uuid&gt;</span>1b87fb8f-442c-4682-b693-b38612342cd1<span class="nt">&lt;/uuid&gt;</span>      // should be unique
+</span><span class='line'>  <span class="nt">&lt;name&gt;</span>node3_1 <span class="nt">&lt;/name&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;memory&gt;</span>524288 <span class="nt">&lt;/memory&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;vcpu&gt;</span>1 <span class="nt">&lt;/vcpu&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;cputune&gt;</span>                                               // virsh vcpupin
+</span><span class='line'>    <span class="nt">&lt;vcpupin</span> <span class="na">vcpu=</span><span class="s">&#39;0&#39;</span> <span class="na">cpuset =</span><span class="s">&#39;4&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/cputune&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;os&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;type&gt;</span>hvm <span class="nt">&lt;/type&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;boot</span> <span class="na">dev=</span><span class="s">&quot;hd&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/os&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;features&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;acpi/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/features&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;clock</span> <span class="na">offset=</span><span class="s">&quot;utc&quot;</span> <span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;timer</span> <span class="na">name=</span><span class="s">&quot;pit&quot;</span> <span class="na">tickpolicy =</span><span class="s">&quot;delay&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;timer</span> <span class="na">name=</span><span class="s">&quot;rtc&quot;</span> <span class="na">tickpolicy =</span><span class="s">&quot;catchup&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/clock&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;cpu</span> <span class="na">mode=</span><span class="s">&quot;host-model&quot;</span> <span class="na">match=</span><span class="s">&quot;exact&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;devices&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&quot;file&quot;</span> <span class="na">device =</span><span class="s">&quot;disk&quot;</span><span class="nt">&gt;</span>                     // os disk
+</span><span class='line'>      <span class="nt">&lt;driver</span> <span class="na">name =</span><span class="s">&quot;qemu&quot;</span> <span class="na">type=</span><span class="s">&quot;raw&quot;</span> <span class="na">cache=</span><span class="s">&quot;none&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;source</span> <span class="na">file =</span><span class="s">&quot;/var/lib/instances/node3_1/instance.img&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;target</span> <span class="na">bus =</span><span class="s">&quot;virtio&quot;</span> <span class="na">dev=</span><span class="s">&quot;vda&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/disk&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;hostdev</span> <span class="na">mode=</span><span class="s">&#39;subsystem&#39;</span> <span class="na">type =</span><span class="s">&#39;pci&#39;</span> <span class="na">managed=</span><span class="s">&#39;yes&#39;</span><span class="nt">&gt;</span>  // nic setting
+</span><span class='line'>      <span class="nt">&lt;source&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;address</span> <span class="na">domain =</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x04&#39;</span> <span class="na">slot=</span><span class="s">&#39;0x10&#39;</span> <span class="na">function =</span><span class="s">&#39;0x0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/source&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;address</span> <span class="na">type =</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot =</span><span class="s">&#39;0x05&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/hostdev&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;serial</span> <span class="na">type=</span><span class="s">&quot;pty&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;tablet&quot;</span> <span class="na">bus =</span><span class="s">&quot;usb&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;graphics</span> <span class="na">type=</span><span class="s">&quot;vnc&quot;</span> <span class="na">autoport =</span><span class="s">&quot;yes&quot;</span> <span class="na">keymap=</span><span class="s">&quot;en-us&quot;</span> <span class="na">listen=</span><span class="s">&quot;0.0.0.0&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/devices&gt;</span>
+</span><span class='line'><span class="nt">&lt;/domain&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>VM Creation by Virsh</h3>
+
+<ol>
+<li>make nic setting is right(SR-IOV, OpenVSwitch)</li>
+<li>BIOS enables VT</li>
+<li>virsh create libvirt.xml</li>
+<li>virsh attach-device domain disk.xml
+
+<blockquote><p>  Create your own rbd device(rbd info volume-name)
+  According to below xml , attach your device</p></blockquote></li>
+</ol>
+
+
+<h3>disk xml could be like below:</h3>
+
+<figure class='code'><figcaption><span>disk.xml   </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&#39;network&#39;</span> <span class="na">device =</span><span class="s">&#39;disk&#39;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;driver</span> <span class="na">name =</span><span class="s">&#39;qemu&#39;</span> <span class="na">type=</span><span class="s">&#39;raw&#39;</span> <span class="na">cache=</span><span class="s">&#39;none&#39;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol =</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xiaoxi/volume-79ee1e33-0353-4e22-bf98-d81a91b2c283:debug_rbd=1:debug_client=1:debug_objecter=1:debug_striper=1:log_to_stderr=true&#39;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;target</span> <span class="na">dev =</span><span class="s">&#39;vdb&#39;</span> <span class="na">bus=</span><span class="s">&#39;virtio&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;serial&gt;</span>79ee1e33-0353-4e22-bf98-d81a91b2c283<span class="nt">&lt;/serial&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;alias</span> <span class="na">name =</span><span class="s">&#39;virtio-disk1&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;address</span> <span class="na">type =</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot =</span><span class="s">&#39;0x06&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span> <span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/disk&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Using bridge as network interface:</h3>
+
+<figure class='code'><figcaption><span>/etc/network/interfaces</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#The primary network interface</span>
+</span><span class='line'>auto br0
+</span><span class='line'>iface br0 inet dhcp
+</span><span class='line'>        bridge_ports eth0
+</span><span class='line'>        bridge_stp off
+</span><span class='line'>        bridge_fd 0
+</span><span class='line'>        bridge_maxwait 0
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><code>/etc/init.d/networking restart</code></p>
+
+<figure class='code'><figcaption><span>libvirt.xml using bridge</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;domain</span> <span class="na">type =</span><span class="s">&quot;kvm&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;uuid&gt;</span>1b87fb8f-442c-4682-b693-b3866dc20cd3 <span class="nt">&lt;/uuid&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;name&gt;</span>node2_1 <span class="nt">&lt;/name&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;memory&gt;</span>524288 <span class="nt">&lt;/memory&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;vcpu&gt;</span>1 <span class="nt">&lt;/vcpu&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;cputune&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;vcpupin</span> <span class="na">vcpu=</span><span class="s">&#39;0&#39;</span> <span class="na">cpuset =</span><span class="s">&#39;2&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/cputune&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;os&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;type&gt;</span>hvm <span class="nt">&lt;/type&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;boot</span> <span class="na">dev=</span><span class="s">&quot;hd&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/os&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;features&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;acpi/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/features&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;clock</span> <span class="na">offset=</span><span class="s">&quot;utc&quot;</span> <span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;timer</span> <span class="na">name=</span><span class="s">&quot;pit&quot;</span> <span class="na">tickpolicy =</span><span class="s">&quot;delay&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;timer</span> <span class="na">name=</span><span class="s">&quot;rtc&quot;</span> <span class="na">tickpolicy =</span><span class="s">&quot;catchup&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/clock&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;cpu</span> <span class="na">mode=</span><span class="s">&quot;host-model&quot;</span> <span class="na">match=</span><span class="s">&quot;exact&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;devices&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&quot;file&quot;</span> <span class="na">device =</span><span class="s">&quot;disk&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;driver</span> <span class="na">name =</span><span class="s">&quot;qemu&quot;</span> <span class="na">type=</span><span class="s">&quot;raw&quot;</span> <span class="na">cache=</span><span class="s">&quot;none&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;source</span> <span class="na">file =</span><span class="s">&quot;/opt/instances/node2_1/instance.img&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;target</span> <span class="na">bus =</span><span class="s">&quot;virtio&quot;</span> <span class="na">dev=</span><span class="s">&quot;vda&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/disk&gt;</span>
+</span><span class='line'>     <span class="nt">&lt;interface</span> <span class="na">type=</span><span class="s">&#39;bridge&#39;</span> <span class="nt">&gt;</span>
+</span><span class='line'>          <span class="nt">&lt;source</span> <span class="na">bridge =</span><span class="s">&#39;br0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>          <span class="nt">&lt;mac</span> <span class="na">address =</span><span class="s">&#39;00:11:22:33:44:55&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;/interface&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;serial</span> <span class="na">type=</span><span class="s">&quot;pty&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;tablet&quot;</span> <span class="na">bus =</span><span class="s">&quot;usb&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;graphics</span> <span class="na">type=</span><span class="s">&quot;vnc&quot;</span> <span class="na">autoport =</span><span class="s">&quot;yes&quot;</span> <span class="na">keymap=</span><span class="s">&quot;en-us&quot;</span> <span class="na">listen=</span><span class="s">&quot;0.0.0.0&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/devices&gt;</span>
+</span><span class='line'><span class="nt">&lt;/domain&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>extra setting to apparmor:</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="gp">root@CephXCD1:~#</span> tail -3 /etc/apparmor.d/abstractions/libvirt-qemu
+</span><span class='line'><span class="go">  # for rbd</span>
+</span><span class='line'><span class="go">  /etc/ceph/ceph.conf r,</span>
+</span><span class='line'><span class="go">  /usr/local/lib/* rmix,</span>
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> service apparmor restart
+</span><span class='line'><span class="go">Setting vncserver &amp; vncviewer: </span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>install vncserver in your hyperviser</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="gp">root@CephXCD1:~#</span> apt-get install vnc4server
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> adduser vnc
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> /etc/init.d/vncserver
+</span><span class='line'><span class="gp">#</span>!/bin/bash
+</span><span class='line'><span class="go">PATH=&quot;$PATH:/usr/bin/&quot;</span>
+</span><span class='line'><span class="go">export USER= &quot;vnc&quot;</span>
+</span><span class='line'><span class="go">DISPLAY=&quot;1&quot;</span>
+</span><span class='line'><span class="go">DEPTH=&quot;16&quot;</span>
+</span><span class='line'><span class="go">GEOMETRY=&quot;1024x768&quot;</span>
+</span><span class='line'><span class="go">OPTIONS=&quot;-depth ${DEPTH} -geometry ${GEOMETRY} :${DISPLAY}&quot;</span>
+</span><span class='line'><span class="go">. / lib/lsb /init-functions</span>
+</span><span class='line'><span class="go">case &quot;$1&quot; in</span>
+</span><span class='line'><span class="go">start)</span>
+</span><span class='line'><span class="go">log_action_begin_msg &quot;Starting vncserver for user &#39;${USER}&#39; on localhost:${DISPLAY}&quot;</span>
+</span><span class='line'><span class="go">su ${USER} -c &quot;/usr/bin/vncserver ${OPTIONS}&quot;</span>
+</span><span class='line'><span class="go">;;</span>
+</span><span class='line'><span class="go">stop)</span>
+</span><span class='line'><span class="go">log_action_begin_msg &quot;Stoping vncserver for user &#39;${USER}&#39; on localhost:${DISPLAY}&quot;</span>
+</span><span class='line'><span class="go">su ${USER} -c &quot;/usr/bin/vncserver -kill :${DISPLAY}&quot;</span>
+</span><span class='line'><span class="go">;;</span>
+</span><span class='line'><span class="go">restart)</span>
+</span><span class='line'><span class="gp">$</span>0 stop
+</span><span class='line'><span class="gp">$</span>0 start
+</span><span class='line'><span class="go">;;</span>
+</span><span class='line'><span class="go">esac</span>
+</span><span class='line'><span class="go">exit 0</span>
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> chmod +x vncserver
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> service vncserver start
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>configure the client</h3>
+
+<p>install vnc viewer in a computer with 图形界面, like windows</p>
+
+<p><img src="/images/vm_creation_by_virsh/vncviewer.png" alt="vncviewer" />
+<img src="/images/vm_creation_by_virsh/vncviewer2.png" alt="vncviewer" /></p>
+
+<p>with best luck, you will enter the VM</p>
+</div>
+
+
+</article>
+
+
+        <div class="sharing">
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+
+
+
+<section id="comments">
+    <div id="disqus_thread"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+
+    			</div>
+    			<footer id="footer">
+    				<p class="credit">
+  Copyright &copy; 2013 - Chendi.Xue. Powered by <a href="http://octopress.org">Octopress</a>
+</p>
+
+
+    			</footer>
+    			
+
+<script type="text/javascript">
+      var disqus_shortname = 'XueChendi';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh/';
+        var disqus_url = 'http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+
+
+
+<link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+
+
+
+
+    		</div>
+    	</section>
+  	</div>
+</body>
+</html>

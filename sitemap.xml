@@ -60,7 +60,21 @@
     </url>
     <url>
         <loc>http://xuechendi.github.io/blog/2013/12/09/heartbeat-and-drbd-internal/</loc>
-        <lastmod>2013-12-09T17:52:15+08:00</lastmod>
+        <lastmod>2013-12-16T09:59:22+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/12/12/building-ceph/</loc>
+        <lastmod>2013-12-12T18:19:42+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh/</loc>
+        <lastmod>2013-12-12T18:19:42+08:00</lastmod>
+    </url>
+    <url>
+        <loc>
+            http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection/
+        </loc>
+        <lastmod>2013-12-13T18:33:24+08:00</lastmod>
     </url>
     <url>
         <loc>http://xuechendi.github.io/404.html</loc>
@@ -68,11 +82,11 @@
     </url>
     <url>
         <loc>http://xuechendi.github.io/blog/archives/</loc>
-        <lastmod>2013-12-09T17:52:15+08:00</lastmod>
+        <lastmod>2013-12-16T09:59:22+08:00</lastmod>
     </url>
     <url>
         <loc>http://xuechendi.github.io/</loc>
-        <lastmod>2013-12-09T17:52:15+08:00</lastmod>
+        <lastmod>2013-12-16T09:59:22+08:00</lastmod>
     </url>
     <url>
         <loc>http://xuechendi.github.io/robots.txt</loc>
@@ -81,5 +95,9 @@
     <url>
         <loc>http://xuechendi.github.io/slides/fusion-io/</loc>
         <lastmod>2013-12-07T18:38:11+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/slides/get-known-of-ha/</loc>
+        <lastmod>2013-12-16T11:03:04+08:00</lastmod>
     </url>
 </urlset>

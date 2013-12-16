@@ -4,7 +4,7 @@
   <title><![CDATA[Category: unfinished | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/unfinished/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2013-12-10T21:59:13+08:00</updated>
+  <updated>2013-12-16T11:03:09+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -12,6 +12,15 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Ceph Best known Performance Collection]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection/"/>
+    <updated>2013-12-13T15:35:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection</id>
+    <content type="html"><![CDATA[<p>In this posting, I hope to collect  <em>TILL NOW BEST KNOWN</em>  Ceph Performance and also their deployment/setup method.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[How to break into Ceph Codes]]></title>
