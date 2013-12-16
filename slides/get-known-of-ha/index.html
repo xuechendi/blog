@@ -147,13 +147,22 @@
                 <p>Ldirectord has support for performing a negotiate check for HTTP, HTTPS, FTP, IMAP, POP, SMTP, LDAP, NNTP and MySQL servers. Adding negotiate check support for other protocols is usually quite simple. Ldirectord is also able to perform a simple check &#8220;connect&#8221; check for other servcies. The connect check simply verifies that the port on the real-servers is able to accept a connection.</p>
                 <br>
                 <p>Here is an example: If a real-servers fails then the server is made quiescent and will be reinserted once it comes back on line. If all the real-servers are down then a fall-back server is inserted into the pool, which will be made quiescent one of the real web servers comes back on line. Typically, the fall-back server is localhost. If an HTTP virtual service is being provided then it is useful to run an Apache HTTP server that returns a page indicating that the service is temporarily inaccessible. </p>
-            <p><b>Referrence: </b><a href="http://horms.net/projects/ldirectord/" target="_blank">ldirectord webpage</a></p>
+            <p><b>Reference: </b><a href="http://horms.net/projects/ldirectord/" target="_blank">ldirectord webpage</a></p>
+            </div>
+        </section>
+        <section>
+            <h2>Fencing and STONITH</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>Fencing is a very important concept in computer clusters for HA (High Availability). A cluster sometimes detects that one of the nodes is behaving strangely and needs to remove it. This is called fencing and is commonly done with a STONITH resource. Fencing may be defined as a method to bring an HA cluster to a known state.</p>
+            <p>To ensure the resource is only running on one node, sometimes when the resource state on some nodes is not certain, fencing comes in. Fencing can ensure that the node does not run any important resources. </p>
+            <p><b>Reference: </b><a href="http://doc.opensuse.org/products/draft/SLE-HA/SLE-ha-guide_sd_draft/cha.ha.fencing.html" target="_blank">Fencing and STONITH guide</a></p>
             </div>
         </section>
         <section>
             <h2>Heartbeat conf</h2>
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
-                <h4>Referrence:</h4>
+                <h4>Reference:</h4>
                 <h5>1. <a href="http://www.ultramonkey.org/3/topologies/config/ha/single/real-server/ha.cf" target="_blank">ha.cf on Webpage</a></h5>
                 <h5>2. <a href="/images/HA/ha.cf.txt" target="_blank">man ha.cf</a></h5>
                 <hr>
