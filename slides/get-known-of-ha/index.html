@@ -76,7 +76,22 @@
             <h2><a href="#" class="navigate-down enabled" >(press DOWN)</a></h2>
         </section>
         <section>
+            <h2>Heartbeat Processes</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>There is 4 kinds of process in Heartbeat deamon, so heartbeat can communicate the states info among heartbeat nodes in right sequence. </p>
+                <p>There can be more than one pair of read and write child process in Heartbeat deamon to watch all of the communication channels.</p>
+                <ul style="font-weight:900; font-size:20px;">The processes are: </ul>
+                    <li>Master Process, </li>
+                    <li>FIFO child, </li>
+                    <li>read child, </li>
+                    <li>write child. </li>
+                </ul>
+            </div>
+        </section>
+        <section>
             <h2>Heartbeat Protocol</h2>
+            <br>
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
                 <p>There is two types of Heartbeat: 环形心跳, 广播心跳（Need to find a paper/webpage something to describe this）</p>
                 <p>Two kinds of heartbeat checks: pull heartbeat check request then response, and push I am alive message to other nodes.</p>
@@ -90,11 +105,11 @@
             <h2>ipfail</h2>
             <br>
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left; float:left;">   
-                <strong><h6>Heartbeat is also able to use qourum devices to help determine which nodes should be active,this is done using the ipfail plugin.</h6>
-                <h6>Below is the link to show the difference between with/without ipfail.</h6></strong>
+                <p style="font-wight:900; font-size:20px;">Heartbeat is also able to use qourum devices to help determine which nodes should be active,this is done using the ipfail plugin.</p>
+                <p style="font-wight:900; font-size:20px;">Below is the link to show the difference between with/without ipfail.(The graph is focus on a <a href="http://www.ultramonkey.org/3/lvs.html#linux-director" target="_blank">linux director service</a> HA)</p>
                 <p>In some situation like below, if a pair of hosts have physical links on the internal and external network, it may be desirable for fail-over to occur if <code>either</code> physical link fails. </p>
-                <img alt="heartbeat units" src="/images/HA/without_ipfail.png" style="width:45%">
-                <img alt="heartbeat units" src="/images/HA/with_ipfail.png" style="width:45%">
+                <img alt="without_ipfail" src="/images/HA/without_ipfail.png" style="width:45%">
+                <img alt="with_ipfail" src="/images/HA/with_ipfail.png" style="width:45%">
                 <p>The <a href="http://www.ultramonkey.org/3/ipfail.html" target="_blank">ipfail</a> plugin for heartbeat makes this possible by monitoring one or more external hosts known as a ping node. Typically this would be a router or switch on the local network. The ping node is treated as a quorum device. connectivity to a qourum device is lost, then heartbeat&#8217;s resource manager may triger a failover. In the simple case, if an interface fails on the active linux director, then one of the ping nodes should become unavailable and fail-over will occur.</p>
             </div>
         </section>
@@ -124,10 +139,15 @@
             <p style="font-size:16px;">Gratutious ARP request</p>
         </section>
         <section>
-            <h2>Heartbeat Modules</h2>
+            <h2>ldirector</h2>
+            <br>
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
-                <p>There is 4 kinds of process in Heartbeat deamon, so heartbeat can communicate the states info among heartbeat nodes in right sequence. The processes are Master Process, FIFO child, read child, write child.</p>
-                <p>There can be more than one pair of read and write child process in Heartbeat deamon to watch all of the communication channels.</p>
+                <p>Ldirectord runs on linux-directors to monitor the health of the real-servers by periodically making a request and checking for an expected response. </p>
+                <p>For HTTP servers this means requesting a known URL and checking that the response contains an expected string. This is called a &#8220;negotiate&#8221; check. </p>
+                <p>Ldirectord has support for performing a negotiate check for HTTP, HTTPS, FTP, IMAP, POP, SMTP, LDAP, NNTP and MySQL servers. Adding negotiate check support for other protocols is usually quite simple. Ldirectord is also able to perform a simple check &#8220;connect&#8221; check for other servcies. The connect check simply verifies that the port on the real-servers is able to accept a connection.</p>
+                <br>
+                <p>Here is an example: If a real-servers fails then the server is made quiescent and will be reinserted once it comes back on line. If all the real-servers are down then a fall-back server is inserted into the pool, which will be made quiescent one of the real web servers comes back on line. Typically, the fall-back server is localhost. If an HTTP virtual service is being provided then it is useful to run an Apache HTTP server that returns a page indicating that the service is temporarily inaccessible. </p>
+            <p><b>Referrence: </b><a href="http://horms.net/projects/ldirectord/" target="_blank">ldirectord webpage</a></p>
             </div>
         </section>
         <section>
@@ -137,7 +157,7 @@
                 <h5>1. <a href="http://www.ultramonkey.org/3/topologies/config/ha/single/real-server/ha.cf" target="_blank">ha.cf on Webpage</a></h5>
                 <h5>2. <a href="/images/HA/ha.cf.txt" target="_blank">man ha.cf</a></h5>
                 <hr>
-                <p>心跳方式：ucast,mcast,serial</p>
+                <d>心跳方式：ucast,mcast,serial</p>
                 <p>debugfile /var/log/HA-debug:该文件保存 heartbeat 的调试信息</p>
                 <p>logfile /var/log/HA-log:heartbeat 的日志文件</p>
                 <p>keepalive 2:心跳的时间间隔,默认时间单位为秒</p>
