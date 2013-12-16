@@ -81,13 +81,9 @@
             <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
                 <p>There is 4 kinds of process in Heartbeat deamon, so heartbeat can communicate the states info among heartbeat nodes in right sequence. </p>
                 <p>There can be more than one pair of read and write child process in Heartbeat deamon to watch all of the communication channels.</p>
-                <ul style="font-weight:900; font-size:20px;">The processes are: </ul>
-                    <li>Master Process, </li>
-                    <li>FIFO child, </li>
-                    <li>read child, </li>
-                    <li>write child. </li>
-                </ul>
             </div>
+            <p>Master Process, FIFO child, read child, write child. </p>
+            <img alt="heartbeat ps" src="/images/HA/heartbeat_ps.png">
         </section>
         <section>
             <h2>Heartbeat Protocol</h2>
@@ -186,6 +182,33 @@
     <section>
         <section>
             <h2>Corosync</h2>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <img alt="corosync architecture" src="/images/HA/corosync_arch.png" style="width:40%; float:left; margin-left:5%; margin-right:10%;">
+                <div style="width:40%; float:left; margin-top:15px;">
+                    <p><b>The totem stack:</b> Allow every node in the cluster to remain in synchronization when processor failure occurs or new processors are included in the membership. And the totem stack supports the ability to communicate redundantly over multiple network interfaces. [Above features are based on the &#8220;Totem Single Ring Ordering and Membership Protocol&#8221; & &#8220;Totem Redundant Ring Protocol&#8221;, which will be described in the &#8220;down&#8221; slide.]</p>
+                    <p><b>IPC Manager:</b> Responsible for receipt and transmission of IPC request, and routed via the service manager to the appropriate service engine plugin. Consists of 2 file description: blocking and non-blocking.  </p>
+                    <p><b>Service Engine:</b> The third parties CRM, like Pacemaker, CMAN, etc.</p>
+                    <p><b>Service Manager:</b> Loading Service Engine plugin, route all requests to the service engine via IPC, Send memebership changes, Deliver info from the low-level Totem Single Ring Protocol to service engine, Also route synchronization activities with the synchronization engine.</p>
+                    <p><b>Synchronization Engine:</b> Directing the recovery of all service engines after a failure or addition of a processor. Being called by Service Engine in some cases. [There is some general APIs: sync_init, sync_process, sync_activate, sync_abort]</p>
+                </div>
+                <p><b>Reference: </b><a href="https://www.kernel.org/doc/ols/2008/ols2008v1-pages-85-100.pdf" target="_blank">Download the paper</a></p>
+            </div>
+        </section>
+        <section>
+            <h2>Totem Single Ring Ordering and Membership protocol</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p></p>
+            </div>
+            <p><b>Reference: </b><a href="http://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&ved=0CC8QFjAA&url=http%3A%2F%2Fwww.csie.fju.edu.tw%2F~yeh%2Fresearch%2Fpapers%2Fos-reading-list%2Famir-tocs95-totem.pdf&ei=EbWuUqnCGsOUrgep3IDQDA&usg=AFQjCNEKjcrLf1Yv-ZzLVKW2XQLTSgzusw&sig2=51IQLEDXczx2wZ5DTuQLDg" target="_blank">Download the peper</a></p>
+        </section>
+        <section>
+            <h2>Totem Redundant Ring Protocol</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p></p>
+            </div>
+            <p><b>Reference: </b><a href="http://www.rcsc.de/pdf/icdcs02.pdf" target="_blank">Download the paper</a></p>
         </section>
     </section>
     <section>
@@ -210,6 +233,18 @@
     <section>
         <section>
             <h2>Pacemaker</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>Pacemaker is a scalable High-Availability cluster resource manager formerly part of Heartbeat [LinuxHA]. Pacemaker was first released as part of Heartbeat-2.0.0 in July 2005 and overcame the deficien- cies of Heartbeat’s previous cluster resource manager. </p>
+                <p>Pacemaker functionality is broken into logically distinct pieces, each one being a separate process and able to be rewritten/replaced independently of the others</p>
+                <ul>
+                <li>cib—Short for Cluster Information Base. Contains definitions of all cluster options, nodes, resources, their relationships to one another and current sta- tus. Synchronizes updates to all cluster nodes. </li>
+                <li>lrmd—Short for Local Resource Management Daemon. Non-cluster aware daemon that presents a common interface to the supported resource types. Interacts directly with resource agents (scripts). </li>
+                <li>pengine—Short for Policy Engine. Computes the next state of the cluster based on the current state and the configuration. Produces a transition graph contained a list of actions and dependencies. </li>
+                <li>tengine—Short for Transition Engine. Co- ordinates the execution of the transition graph pro- duced by the Policy Engine. </li>
+                <li>crmd—Short for Cluster Resource Management Daemon. Largely a message broker for the PE, TE, and LRM. Also elects a leader to co- ordinate the activities of the cluster. </li>
+                </ul>
+            </div>
         </section>
     </section>
     </div>
