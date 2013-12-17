@@ -6,6 +6,7 @@
   <link href="http://xuechendi.github.io/"/>
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   <updated>2013-12-05T14:05:02+08:00</updated>
 =======
   <updated>2013-12-07T22:29:04+08:00</updated>
@@ -13,6 +14,9 @@
 =======
   <updated>2013-12-10T21:59:13+08:00</updated>
 >>>>>>> c99fdd6e97eea5b487996169e396a38f6d38b3ff
+=======
+  <updated>2013-12-16T17:56:35+08:00</updated>
+>>>>>>> dc1c87a74192441bbe5a4b48b4e4497fefeeae02
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -22,6 +26,7 @@
 
   
   <entry>
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -64,128 +69,381 @@ Some new components appeared with R2:</p>
 <h5>1. ClusterInformationBase</h5>
 
 <h5>2. ClusterResourceManager</h5>
+=======
+    <title type="html"><![CDATA[Ceph Best known Performance Collection]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection/"/>
+    <updated>2013-12-13T15:35:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection</id>
+    <content type="html"><![CDATA[<p>In this posting, I hope to collect  <em>TILL NOW BEST KNOWN</em>  Ceph Performance and also their deployment/setup method.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[VM Creation by Virsh]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh/"/>
+    <updated>2013-12-12T14:34:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh</id>
+    <content type="html"><![CDATA[<h3>xml setting could be like below:</h3>
+>>>>>>> dc1c87a74192441bbe5a4b48b4e4497fefeeae02
 
-<h5>3. Modular PolicyEngine</h5>
+<figure class='code'><figcaption><span>libvirt.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;domain</span> <span class="na">type =</span><span class="s">&quot;kvm&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;uuid&gt;</span>1b87fb8f-442c-4682-b693-b38612342cd1<span class="nt">&lt;/uuid&gt;</span>      // should be unique
+</span><span class='line'>  <span class="nt">&lt;name&gt;</span>node3_1 <span class="nt">&lt;/name&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;memory&gt;</span>524288 <span class="nt">&lt;/memory&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;vcpu&gt;</span>1 <span class="nt">&lt;/vcpu&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;cputune&gt;</span>                                               // virsh vcpupin
+</span><span class='line'>    <span class="nt">&lt;vcpupin</span> <span class="na">vcpu=</span><span class="s">&#39;0&#39;</span> <span class="na">cpuset =</span><span class="s">&#39;4&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/cputune&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;os&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;type&gt;</span>hvm <span class="nt">&lt;/type&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;boot</span> <span class="na">dev=</span><span class="s">&quot;hd&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/os&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;features&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;acpi/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/features&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;clock</span> <span class="na">offset=</span><span class="s">&quot;utc&quot;</span> <span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;timer</span> <span class="na">name=</span><span class="s">&quot;pit&quot;</span> <span class="na">tickpolicy =</span><span class="s">&quot;delay&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;timer</span> <span class="na">name=</span><span class="s">&quot;rtc&quot;</span> <span class="na">tickpolicy =</span><span class="s">&quot;catchup&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/clock&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;cpu</span> <span class="na">mode=</span><span class="s">&quot;host-model&quot;</span> <span class="na">match=</span><span class="s">&quot;exact&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;devices&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&quot;file&quot;</span> <span class="na">device =</span><span class="s">&quot;disk&quot;</span><span class="nt">&gt;</span>                     // os disk
+</span><span class='line'>      <span class="nt">&lt;driver</span> <span class="na">name =</span><span class="s">&quot;qemu&quot;</span> <span class="na">type=</span><span class="s">&quot;raw&quot;</span> <span class="na">cache=</span><span class="s">&quot;none&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;source</span> <span class="na">file =</span><span class="s">&quot;/var/lib/instances/node3_1/instance.img&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;target</span> <span class="na">bus =</span><span class="s">&quot;virtio&quot;</span> <span class="na">dev=</span><span class="s">&quot;vda&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/disk&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;hostdev</span> <span class="na">mode=</span><span class="s">&#39;subsystem&#39;</span> <span class="na">type =</span><span class="s">&#39;pci&#39;</span> <span class="na">managed=</span><span class="s">&#39;yes&#39;</span><span class="nt">&gt;</span>  // nic setting
+</span><span class='line'>      <span class="nt">&lt;source&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;address</span> <span class="na">domain =</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x04&#39;</span> <span class="na">slot=</span><span class="s">&#39;0x10&#39;</span> <span class="na">function =</span><span class="s">&#39;0x0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/source&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;address</span> <span class="na">type =</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot =</span><span class="s">&#39;0x05&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/hostdev&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;serial</span> <span class="na">type=</span><span class="s">&quot;pty&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;tablet&quot;</span> <span class="na">bus =</span><span class="s">&quot;usb&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;graphics</span> <span class="na">type=</span><span class="s">&quot;vnc&quot;</span> <span class="na">autoport =</span><span class="s">&quot;yes&quot;</span> <span class="na">keymap=</span><span class="s">&quot;en-us&quot;</span> <span class="na">listen=</span><span class="s">&quot;0.0.0.0&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/devices&gt;</span>
+</span><span class='line'><span class="nt">&lt;/domain&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
 
-<h5>4. LocalResourceManager</h5>
 
-<h5>5. StonithDaemon</h5>
+<h3>VM Creation by Virsh</h3>
 
-<br>
+<ol>
+<li>make nic setting is right(SR-IOV, OpenVSwitch)</li>
+<li>BIOS enables VT</li>
+<li>virsh create libvirt.xml</li>
+<li>virsh attach-device domain disk.xml
 
-
-<h4>ClusterInformationBase</h4>
-
-<p>ClusterInformationBase (aka CIB) is the component which stores information about the cluster. It is replicated on every node and stores two kind of information:</p>
-
-<h5>1. Static information. It includes definitions of cluster nodes, resources, monitor operations and constraints.</h5>
-
-<h5>2. Dynamic information. CIB stores the current status of the cluster.</h5>
-
-<br>
+<blockquote><p>  Create your own rbd device(rbd info volume-name)
+  According to below xml , attach your device</p></blockquote></li>
+</ol>
 
 
-<p>CIB is formatted in a XML document and must be built following DTD document included with Heartbeat specifications. Cib.xml files can be red in annex 2.1.</p>
+<h3>disk xml could be like below:</h3>
 
-<h4>ClusterResourceManager</h4>
+<figure class='code'><figcaption><span>disk.xml   </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&#39;network&#39;</span> <span class="na">device =</span><span class="s">&#39;disk&#39;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;driver</span> <span class="na">name =</span><span class="s">&#39;qemu&#39;</span> <span class="na">type=</span><span class="s">&#39;raw&#39;</span> <span class="na">cache=</span><span class="s">&#39;none&#39;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol =</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xiaoxi/volume-79ee1e33-0353-4e22-bf98-d81a91b2c283:debug_rbd=1:debug_client=1:debug_objecter=1:debug_striper=1:log_to_stderr=true&#39;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;target</span> <span class="na">dev =</span><span class="s">&#39;vdb&#39;</span> <span class="na">bus=</span><span class="s">&#39;virtio&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;serial&gt;</span>79ee1e33-0353-4e22-bf98-d81a91b2c283<span class="nt">&lt;/serial&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;alias</span> <span class="na">name =</span><span class="s">&#39;virtio-disk1&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;address</span> <span class="na">type =</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot =</span><span class="s">&#39;0x06&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span> <span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/disk&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
 
-<p>The ClusterResourceManager (CRM) component consists on the following components:</p>
 
-<h5>1. ClusterInformationBase</h5>
+<h3>Using bridge as network interface:</h3>
 
-<h5>2. ClusterResourceManagerDaemon</h5>
+<figure class='code'><figcaption><span>/etc/network/interfaces</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#The primary network interface</span>
+</span><span class='line'>auto br0
+</span><span class='line'>iface br0 inet dhcp
+</span><span class='line'>        bridge_ports eth0
+</span><span class='line'>        bridge_stp off
+</span><span class='line'>        bridge_fd 0
+</span><span class='line'>        bridge_maxwait 0
+</span></code></pre></td></tr></table></div></figure>
 
-<h5>3. PolicyEngine</h5>
 
-<h5>4. Transitioner</h5>
+<p><code>/etc/init.d/networking restart</code></p>
 
-<h5>5. LocalResourceManager</h5>
+<figure class='code'><figcaption><span>libvirt.xml using bridge</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;domain</span> <span class="na">type =</span><span class="s">&quot;kvm&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;uuid&gt;</span>1b87fb8f-442c-4682-b693-b3866dc20cd3 <span class="nt">&lt;/uuid&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;name&gt;</span>node2_1 <span class="nt">&lt;/name&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;memory&gt;</span>524288 <span class="nt">&lt;/memory&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;vcpu&gt;</span>1 <span class="nt">&lt;/vcpu&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;cputune&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;vcpupin</span> <span class="na">vcpu=</span><span class="s">&#39;0&#39;</span> <span class="na">cpuset =</span><span class="s">&#39;2&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/cputune&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;os&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;type&gt;</span>hvm <span class="nt">&lt;/type&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;boot</span> <span class="na">dev=</span><span class="s">&quot;hd&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/os&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;features&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;acpi/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/features&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;clock</span> <span class="na">offset=</span><span class="s">&quot;utc&quot;</span> <span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;timer</span> <span class="na">name=</span><span class="s">&quot;pit&quot;</span> <span class="na">tickpolicy =</span><span class="s">&quot;delay&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;timer</span> <span class="na">name=</span><span class="s">&quot;rtc&quot;</span> <span class="na">tickpolicy =</span><span class="s">&quot;catchup&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/clock&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;cpu</span> <span class="na">mode=</span><span class="s">&quot;host-model&quot;</span> <span class="na">match=</span><span class="s">&quot;exact&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;devices&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&quot;file&quot;</span> <span class="na">device =</span><span class="s">&quot;disk&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;driver</span> <span class="na">name =</span><span class="s">&quot;qemu&quot;</span> <span class="na">type=</span><span class="s">&quot;raw&quot;</span> <span class="na">cache=</span><span class="s">&quot;none&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;source</span> <span class="na">file =</span><span class="s">&quot;/opt/instances/node2_1/instance.img&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;target</span> <span class="na">bus =</span><span class="s">&quot;virtio&quot;</span> <span class="na">dev=</span><span class="s">&quot;vda&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/disk&gt;</span>
+</span><span class='line'>     <span class="nt">&lt;interface</span> <span class="na">type=</span><span class="s">&#39;bridge&#39;</span> <span class="nt">&gt;</span>
+</span><span class='line'>          <span class="nt">&lt;source</span> <span class="na">bridge =</span><span class="s">&#39;br0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>          <span class="nt">&lt;mac</span> <span class="na">address =</span><span class="s">&#39;00:11:22:33:44:55&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;/interface&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;serial</span> <span class="na">type=</span><span class="s">&quot;pty&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;tablet&quot;</span> <span class="na">bus =</span><span class="s">&quot;usb&quot;</span><span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;graphics</span> <span class="na">type=</span><span class="s">&quot;vnc&quot;</span> <span class="na">autoport =</span><span class="s">&quot;yes&quot;</span> <span class="na">keymap=</span><span class="s">&quot;en-us&quot;</span> <span class="na">listen=</span><span class="s">&quot;0.0.0.0&quot;</span> <span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/devices&gt;</span>
+</span><span class='line'><span class="nt">&lt;/domain&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
 
-<br>
+
+<h3>extra setting to apparmor:</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="gp">root@CephXCD1:~#</span> tail -3 /etc/apparmor.d/abstractions/libvirt-qemu
+</span><span class='line'><span class="go">  # for rbd</span>
+</span><span class='line'><span class="go">  /etc/ceph/ceph.conf r,</span>
+</span><span class='line'><span class="go">  /usr/local/lib/* rmix,</span>
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> service apparmor restart
+</span><span class='line'><span class="go">Setting vncserver &amp; vncviewer: </span>
+</span></code></pre></td></tr></table></div></figure>
 
 
-<p>The ClusterResourceManagerDaemon (CRMD) runs on every node and coordinates the actions of all other cluster resource managers. It exchanges information with the designated coordinator (DC) and it can be seen as a communication interface between DC and subsystem components such as CIB and LocalResourceManager.</p>
+<h3>install vncserver in your hyperviser</h3>
 
-<p>The DC is a special instance of CRMD. It is elected with the help of the list of cluster nodes from the ClusterConsensusManager (CCM) and takes on the responsibilities of ResourceAllocation throughout the cluster. Therefore, DC is the one who delivers CIB information to all slave instances of CRMD.</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="gp">root@CephXCD1:~#</span> apt-get install vnc4server
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> adduser vnc
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> /etc/init.d/vncserver
+</span><span class='line'><span class="gp">#</span>!/bin/bash
+</span><span class='line'><span class="go">PATH=&quot;$PATH:/usr/bin/&quot;</span>
+</span><span class='line'><span class="go">export USER= &quot;vnc&quot;</span>
+</span><span class='line'><span class="go">DISPLAY=&quot;1&quot;</span>
+</span><span class='line'><span class="go">DEPTH=&quot;16&quot;</span>
+</span><span class='line'><span class="go">GEOMETRY=&quot;1024x768&quot;</span>
+</span><span class='line'><span class="go">OPTIONS=&quot;-depth ${DEPTH} -geometry ${GEOMETRY} :${DISPLAY}&quot;</span>
+</span><span class='line'><span class="go">. / lib/lsb /init-functions</span>
+</span><span class='line'><span class="go">case &quot;$1&quot; in</span>
+</span><span class='line'><span class="go">start)</span>
+</span><span class='line'><span class="go">log_action_begin_msg &quot;Starting vncserver for user &#39;${USER}&#39; on localhost:${DISPLAY}&quot;</span>
+</span><span class='line'><span class="go">su ${USER} -c &quot;/usr/bin/vncserver ${OPTIONS}&quot;</span>
+</span><span class='line'><span class="go">;;</span>
+</span><span class='line'><span class="go">stop)</span>
+</span><span class='line'><span class="go">log_action_begin_msg &quot;Stoping vncserver for user &#39;${USER}&#39; on localhost:${DISPLAY}&quot;</span>
+</span><span class='line'><span class="go">su ${USER} -c &quot;/usr/bin/vncserver -kill :${DISPLAY}&quot;</span>
+</span><span class='line'><span class="go">;;</span>
+</span><span class='line'><span class="go">restart)</span>
+</span><span class='line'><span class="gp">$</span>0 stop
+</span><span class='line'><span class="gp">$</span>0 start
+</span><span class='line'><span class="go">;;</span>
+</span><span class='line'><span class="go">esac</span>
+</span><span class='line'><span class="go">exit 0</span>
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> chmod +x vncserver
+</span><span class='line'><span class="gp">root@CephXCD1:~#</span> service vncserver start
+</span></code></pre></td></tr></table></div></figure>
 
-<p>The PolicyEngine (PE) module is the one who performs computation of the next state in the cluster. It is triggered by any event in the cluster, such as a resource changing state, a node leaving or joining, or CRM event such as a CRM parting or leaving. The PE, takes the input from CIB and runs locally and does not do any network I/O, it only runs an algorithm. It describes the actions and their dependencies necessary to go from the current cluster state to the target cluster state.
-When PE returns an action it is passed to the Transitioner. The goal of this component is to make PE’s wishes become true. The new state computed by PE is passed to the Transitioner, which communicates with the LocalResourceManager on every node and informs about the actions decided by PE (start, stop resources).</p>
 
-<h3>ClusterConsensusManager</h3>
+<h3>configure the client</h3>
 
-<p>The ClusterConsensusManager (CCM) is the one who establishes membership in the cluster. This membership layer is in the middle of Heartbeat, which is the messaging and infrastructure layer, and the new CRM which is the resource allocation layer. CCM information includes new additions to the membership, lost nodes and loss of quorum.</p>
+<p>install vnc viewer in a computer with 图形界面, like windows</p>
 
-<h3>Stonith daemon</h3>
+<p><img src="http://xuechendi.github.io/images/vm_creation_by_virsh/vncviewer.png" alt="vncviewer" />
+<img src="http://xuechendi.github.io/images/vm_creation_by_virsh/vncviewer2.png" alt="vncviewer" /></p>
 
-<p>R2 cluster style features include stonith capabilities. Stonith is an acronym meaning “Shot The Other Node In The Head”.
-A stonith daemon is running on every node and receives requests from the CRM’s TE about what and when to reset. An example of when stonith daemon action is used is in a split brain situation. The DC will send a message to the Stonith daemon to reset the sick node. This node will reboot and then will join the cluster again in a healthy way.</p>
+<p>with best luck, you will enter the VM</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Building Ceph]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/12/building-ceph/"/>
+    <updated>2013-12-12T11:17:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/12/building-ceph</id>
+    <content type="html"><![CDATA[<p>Actually, I had bulid ceph from codes for many times, just each time, I have to struggle a little bit, for I always forget install some libraries.</p>
 
-<h3>LocalResourceManager</h3>
+<p>So, record things here</p>
 
-<p>Finally, the LocalResourceManager (LRM) has the responsibility for performing operations on resources, by using ResourceAgent scripts to carry out the work. ResourceAgent scripts define a set of start, stop or monitor operations, as directed by the CRM, which are used to operate on a resource instance.
-LRM also provides information about resources. It can provide a list of resources that are currently primary and its current state.</p>
+<p>I found ceph.com have also detailed its &ldquo;Building from Codes&rdquo; doc, indeed, much detailed than previous version</p>
 
-<h3>Configuration and manageability</h3>
+<p>But seems I still missing some packages when doing &ldquo;make&rdquo;</p>
 
-<p>Heartbeat GUI is a user interface to manage Heartbeat clusters. It is delivered in a separate package of Heartbeat core. It is an application developed with python and is able to add, remove nodes or cluster resources.
-It is necessary to have connectivity to port 5560/tcp of the cluster node and password for hacluster user running on the cluster nodes.
-Heartbeat GUI is executed from a shell and after being authenticated, the main screen of Heartbeat GUI appears. This is how GUI looks like:</p>
+<p><code><a href="http://ceph.com/docs/master/install/build-ceph/">http://ceph.com/docs/master/install/build-ceph/</a></code></p>
 
-<p><img src="http://xuechendi.github.io/images/HA/heartbeat_gui.png" alt="heartbeat_gui" /></p>
+<figure class='code'><figcaption><span>pre-make-ceph-packages</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">sudo apt-get install pkg-config autotools-dev autoconf automake cdbs gcc g++ git libboost-dev libedit-dev libssl-dev libtool libfcgi libfcgi-dev libfuse-dev linux-kernel-headers libcrypto++-dev libcrypto++ libexpat1-dev libboost-thread-dev uuid-dev libkeyutils-dev libgoogle-perftools-dev libatomic-ops-dev libaio-dev libgdata-common libgdata13 libsnappy-dev libleveldb-dev libboost-program-options-dev</span>
+</span><span class='line'><span class="go">cd ceph</span>
+</span><span class='line'><span class="go">./autogen.sh</span>
+</span><span class='line'><span class="go">./configure</span>
+</span><span class='line'><span class="go">make</span>
+</span><span class='line'><span class="go">make install</span>
+</span></code></pre></td></tr></table></div></figure>
 
-<h2>HA overview</h2>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Heartbeat and DRBD internal]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/09/heartbeat-and-drbd-internal/"/>
+    <updated>2013-12-09T10:20:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/09/heartbeat-and-drbd-internal</id>
+    <content type="html"><![CDATA[<p>This posting is talking about Heartbeat &amp; DRBD internal</p>
 
-<p><img src="http://xuechendi.github.io/images/HA/pcmk-overview.png" alt="heartbeat_gui" /></p>
+<p>Every high−availability system needs two basic services: to be informed of cluster members joining and leaving the system, and to provide basic communication services for managing a cluster.</p>
 
-<h2>HA(Pacemaker) Internal Components</h2>
+<p><embed src='http://xuechendi.github.io/slides/get-known-of-ha' allowFullScreen='true' width='100%' height='800' align='middle'></embed></p>
 
-<p>Pacemaker itself is composed of four key components (illustrated below in the same color scheme as the previous diagram):</p>
+<h2>Referrence</h2>
 
-<h5>Heartbeat：将原来的消息通信层独立为heartbeat项目，新的heartbeat只负责维护集群各节点的信息以及它们之前通信；</h5>
 
-<h5>Cluster Glue：相当于一个中间层，它用来将heartbeat和pacemaker关联起来，主要包含2个部分，即为LRM和STONITH。</h5>
+<h6><a href="http://upcommons.upc.edu/pfc/bitstream/2099.1/4970/1/memoria.pdf" target="_blank">1. MASTER THESIS of Abraham Iglesias Aparicio</a></h6>
 
-<h5>Resource Agent：用来控制服务启停，监控服务状态的脚本集合，这些脚本将被LRM调用从而实现各种资源启动、停止、监控等等。</h5>
 
-<h5>Pacemaker:也就是Cluster Resource Manager （简称CRM），用来管理整个HA的控制中心，客户端通过pacemaker来配置管理监控整个集群。</h5>
+<h6><a href="http://www.linux-ha.org/wiki/Documentation" target="_blank">2. The Linux-HA project: Heartbeat</a></h6>
 
-<h5>Corosync:a Group Communication System， helps Pacemaker to support popular open source cluster filesystems.</h5>
 
-<pre><code>what is Corosync:
-    Corosync包含OpenAIS的核心框架用来对Wilson的标准接口的使用、管理。它为商用的或开源性的集群提供集群执行框架。Corosync执行高可用应用程序的通信组系统，它有以下特征：
-    一个封闭的程序组（A closed process group communication model）通信模式，这个模式提供一种虚拟的同步方式来保证能够复制服务器的状态。
-    一个简单可用性管理组件（A simple availability manager），这个管理组件可以重新启动应用程序的进程当它失败后。
-    一个配置和内存数据的统计（A configuration and statistics in-memory database），内存数据能够被设置，回复，接受通知的更改信息。
-    一个定额的系统（A quorum  syste）,定额完成或者丢失时通知应用程序。
-</code></pre>
+<h6><a href="http://hi.baidu.com/leolance/item/26e1943543e873342e0f8142">3. http://hi.baidu.com/leolance/item/26e1943543e873342e0f8142</a></h6>
 
-<p><img src="http://xuechendi.github.io/images/HA/pcmk-stack.png" alt="heartbeat_gui" /></p>
 
-<h5>1. CIB (aka. Cluster Information Base)</h5>
+<h6><a href="http://www.ultramonkey.org/3/linux-ha.html">4. http://www.ultramonkey.org/3/linux-ha.html</a></h6>
 
-<p>The CIB uses XML to represent both the cluster’s configuration and current state of all resources in the cluster. The contents of the CIB are automatically kept in sync across the entire cluster and are used by the PEngine to compute the ideal state of the cluster and how it should be achieved.</p>
 
-<h5>2. CRMd (aka. Cluster Resource Management daemon)</h5>
+<h6><a href="http://doc.opensuse.org/products/draft/SLE-HA/SLE-ha-guide_sd_draft/book.sleha.html">5. SUSE Linux Enterprise High Availability Extension High Availability Guide</a></h6>
 
-<p>This list of instructions is then fed to the DC (Designated Co-ordinator). Pacemaker centralizes all cluster decision making by electing one of the CRMd instances to act as a master. Should the elected CRMd process, or the node it is on, fail… a new one is quickly established.</p>
-
-<h5>3. PEngine (aka. PE or Policy Engine)</h5>
-
-<p>The DC carries out the PEngine’s instructions in the required order by passing them to either the LRMd (Local Resource Management daemon) or CRMd peers on other nodes via the cluster messaging infrastructure (which in turn passes them on to their LRMd process).</p>
-
-<p>The peer nodes all report the results of their operations back to the DC and based on the expected and actual results, will either execute any actions that needed to wait for the previous one to complete, or abort processing and ask the PEngine to recalculate the ideal cluster state based on the unexpected results.</p>
-
-<h5>4. STONITHd</h5>
-
-<p>In some cases, it may be necessary to power off nodes in order to protect shared data or complete resource recovery. For this Pacemaker comes with STONITHd. STONITH is an acronym for Shoot-The-Other-Node-In-The-Head and is usually implemented with a remote power switch. In Pacemaker, STONITH devices are modeled as resources (and configured in the CIB) to enable them to be easily monitored for failure, however STONITHd takes care of understanding the STONITH topology such that its clients simply request a node be fenced and it does the rest.</p>
-
-<p><img src="http://xuechendi.github.io/images/HA/pcmk-internals.png" alt="heartbeat_gui" /></p>
-
-<p>A heartbeat is a periodic communication attempt to check for updated policies.</p>
 
 <p>Heartbeat仅仅是个HA软件，它仅能完成心跳监控和资源接管，不会监视它控制的资源或应用程序。要监控资源和应用程序是否运行正常，必须使用第三方的插件，例如ipfail、Mon和Ldirector等。Heartbeat自身包含了几个插件，分别是ipfail、Stonith和Ldirectord，介绍如下。</p>
 
-<p>ipfail的功能直接包含在Heartbeat里面，主要用于检测网络故障，并做出合理的反应。为了实现这个功能，ipfail使用ping节点或者ping节点组来检测网络连接是否出现故障，从而及时做出转移措施。</p>
+<p>ipfail的功能直接包含在Heartbeat里面，主要用于检测网络故障，并做出合理的反应。为了实现这个功能，ipfail使用ping节点或者ping节点组来检测网络连接是否出现故障，从而及时做出转移措施。Linux内核不仅为各种不同类型的watchdog硬件电路提供了驱动。</p>
 
 <p>Stonith插件可以在一个没有响应的节点恢复后，合理接管集群服务资源，防止数据冲突。当一个节点失效后，会从集群中删除。如果不使用Stonith插件，那么失效的节点可能会导致集群服务在多于一个节点运行，从而造成数据冲突甚至是系统崩溃。因此，使用Stonith插件可以保证共享存储环境中的数据完整性。</p>
 
@@ -194,6 +452,26 @@ Heartbeat GUI is executed from a shell and after being authenticated, the main s
 <p>针对系统自身出现问题导致heartbeat无法监控的问题，就需要在Linux内核中启用一个叫watchdog的模块。watchdog是一个Linux内核模块，它通过定时向/dev/watchdog设备文件执行写操作，从而确定系统是否正常运行。如果watchdog认为内核挂起，就会重新启动系统，进而释放节点资源。</p>
 
 <p>在Linux中完成watchdog功能的软件叫softdog。softdog维护一个内部计时器，此计时器在一个进程写入/dev/watchdog设备文件时更新。如果softdog没有看到进程写入/dev/watchdog文件，就认为内核可能出了故障。watchdog超时周期默认是一分钟，可以通过将watchdog集成到Heartbeat中，从而通过Heartbeat来监控系统是否正常运行。</p>
+
+<h4>Linux下watchdog的工作原理</h4>
+
+<p>Watchdog在实现上可以是硬件电路也可以是软件定时器，能够在系统出现故障时自动重新启动系统。在Linux 内核下, watchdog的基本工作原理是：当watchdog启动后(即/dev/watchdog 设备被打开后)，如果在某一设定的时间间隔内/dev/watchdog没有被执行写操作, 硬件watchdog电路或软件定时器就会重新启动系统。</p>
+
+<p>/dev/watchdog 是一个主设备号为10， 从设备号130的字符设备节点。 Linux内核不仅为各种不同类型的watchdog硬件电路提供了驱动，还提供了一个基于定时器的纯软件watchdog驱动。 驱动源码位于内核源码树drivers\char\watchdog\目录下。</p>
+
+<h4>硬件与软件watchdog的区别</h4>
+
+<p>硬件watchdog必须有硬件电路支持, 设备节点/dev/watchdog对应着真实的物理设备， 不同类型的硬件watchdog设备由相应的硬件驱动管理。软件watchdog由一内核模块softdog.ko 通过定时器机制实现，/dev/watchdog并不对应着真实的物理设备，只是为应用提供了一个与操作硬件watchdog相同的接口。</p>
+
+<p>硬件watchdog比软件watchdog有更好的可靠性。 软件watchdog基于内核的定时器实现，当内核或中断出现异常时，软件watchdog将会失效。而硬件watchdog由自身的硬件电路控制, 独立于内核。无论当前系统状态如何，硬件watchdog在设定的时间间隔内没有被执行写操作，仍会重新启动系统。</p>
+
+<p>一些硬件watchdog卡如WDT501P 以及一些Berkshire卡还可以监测系统温度，提供了 /dev/temperature接口。 对于应用程序而言, 操作软件、硬件watchdog的方式基本相同：打开设备/dev/watchdog, 在重启时间间隔内对/dev/watchdog执行写操作。即软件、硬件watchdog对应用程序而言基本是透明的。</p>
+
+<p>在任一时刻， 只能有一个watchdog驱动模块被加载，管理/dev/watchdog 设备节点。如果系统没有硬件watchdog电路，可以加载软件watchdog驱动softdog.ko。</p>
+
+<p>When heartbeat is configured, a master node is selected. When heartbeat starts up this node sets up an interface for a virtual IP address, that will be accessed by external end users. If this node fails then another node in the heartbeat cluster will start up an interface for this IP address and use gratuitous ARP to ensure that all traffic bound for this address is received by this machine. This method of fail-over is called IP Address Takeover. Unless the auto_failback directive is set to off in the ha.cf file, once the master node becomes available again resources will fail-over again so they are once again owned by the master node.</p>
+
+<p>Each virtual IP address is considered to be a resource. Resources are encapsuated as programes that work similarly to unix init scripts, that is the resource can be started and stopped, and its can be asked if it is running or not. In this way ~eartbeat is able to start and stop resources depending on the status of the other node that it is communicating with using the heartbeat-protocol. As the resources are encapsulated as programmes, arbitary resources may be used.</p>
 ]]></content>
   </entry>
   
