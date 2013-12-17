@@ -26,8 +26,8 @@ theme: beige
 		<img alt="HA components" src="{{ root_url }}/images/HA/ha_internals.png">
 		<div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">	
 			<p>This is a components graph like we described in last slide, and here we also should mention is that:</p>
-			<p>Since "Heartbeat" project is now in its third virsion and pacemaker is now being a independent project mainly responsible for the CRM part.</p>
-			<p>Heartbeat itself is more controled the messaging & membership part, and an other project named corosync is also a strong candidate to do the messaging and membership work. </p>
+			<p>Since "Heartbeat" project is now in its third virsion and pacemaker is now being an independent project mainly responsible for the CRM part.</p>
+			<p>Heartbeat itself is now more controlling the messaging & membership part, and another project named corosync is also a strong candidate to do the messaging and membership work. </p>
 			<p>So in this graph, there are three independent projects in different color respectively.</p>
 		</div>		
 	</section>
@@ -41,7 +41,15 @@ theme: beige
 		<section>
 			<h2>Heartbeat</h2>
 			<br>
+			<div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">	
+			<p>A heartbeat is a message sent between machines at a regular interval of the order of seconds. </p>
+			<p>If a heartbeat isn't received for a time -- usually a few heartbeat intervals -- the machine that should have sent the heartbeat is assumed to have failed. </p>
+			<p>A heartbeat protocol is generally used to negotiate and monitor the availability of a resource, such as a floating IP address. Typically when a heartbeat starts on a machine it will perform an election process with other machines on the heartbeat network to determine which, if any machine owns the resource. On heartbeat networks of more than two machines it is important to take into account partitioning, where two halves of the network could be functioning but not able to communicate with each other. In a situation such as this it is important that the resource is only owned by one machine, not one machine in each partition. </p>
+			<br>
+			<p>As a heartbeat is intended to be used to indicate the health of a machine it is important that the heartbeat protocol and the transport that it runs on is as reliable as possible. Effecting a fail-over because of a false alarm may, depending on the resource, be highly undesirable. </p>
+			<p>It is also important to react quickly to an actual failure, so again it is important that the heartbeat is reliable. For this reason it is often desirable to have heartbeat running over more than one transport, for instance an ethernet segment using UDP/IP, and a serial link. </p>
 			<p>Tips: ipfail, ldirector, ip address takeover(gratutious arp)</p>
+			</div>
 			<h2><a href="#" class="navigate-down enabled" >(press DOWN)</a></h2>
 		</section>
 		<section>
@@ -167,9 +175,11 @@ theme: beige
 			<h2>Totem Single Ring Ordering and Membership protocol</h2>
 			<br>
 			<div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">	
-				<p></p>
+				<p><b>Aim:</b> Supports High-Available Fault-tolerant Distributed systems that must continue to operate despite network partitioning and remerging and despite processor failure and restart. </p>
+				<p><b>Key Mechanism:</b> Flow control mechanism that limits message loss due to buffer overflow at the receivers. </p>
 			</div>
-			<p><b>Reference: </b><a href="http://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&ved=0CC8QFjAA&url=http%3A%2F%2Fwww.csie.fju.edu.tw%2F~yeh%2Fresearch%2Fpapers%2Fos-reading-list%2Famir-tocs95-totem.pdf&ei=EbWuUqnCGsOUrgep3IDQDA&usg=AFQjCNEKjcrLf1Yv-ZzLVKW2XQLTSgzusw&sig2=51IQLEDXczx2wZ5DTuQLDg" target="_blank">Download the peper</a></p>
+			<p><b>Reference: </b><a href="http://www.csie.fju.edu.tw/~yeh/research/papers/os-reading-list/amir-tocs95-totem.pdf" target="_blank">Download the paper</a></p>
+			<p><b>Reference: </b><a href="www.cse.scu.edu/~jholliday/COEN317F04/totem.ppt" target="_blank">Download the paper</a></p>
 		</section>
 		<section>
 			<h2>Totem Redundant Ring Protocol</h2>
