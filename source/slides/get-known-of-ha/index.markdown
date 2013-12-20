@@ -73,6 +73,7 @@ theme: beige
 			</div>
 			<h6>The communication unit fetched by Wireshark:</h6>
 			<img alt="heartbeat units" src="{{ root_url }}/images/HA/heartbeat_units.png">
+			<p><b>Reference: </b><a href="{{root_url}}/images/HA/Accelerated_Heartbeat_Protocols.pdf " target="_blank">paper talks about 《A family of Heartbeat Protocols》</a></p>
 		</section>
 		<section>
 			<h2>ipfail</h2>
@@ -176,18 +177,47 @@ theme: beige
 			<br>
 			<div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">	
 				<p><b>Aim:</b> Supports High-Available Fault-tolerant Distributed systems that must continue to operate despite network partitioning and remerging and despite processor failure and restart. </p>
-				<p><b>Key Mechanism:</b> Flow control mechanism that limits message loss due to buffer overflow at the receivers. </p>
+				<p><b>Key Mechanism:</b></p>
+				<p>1. The Total Ordering Protocol: provides an agreed(msg in the same order) and safe(The Msgs: all-received-up-to have been received) delivery of messages in a broadcast domain, which based on a failure-free assumption(no token missing, no processor failing, etc)</p>
+				<p>2. The Membership Protocol: Detects processor failure, network partitioning, and loss of all copies of token, then reconstructs new ring.</p>
+				<p>3. The Recovery Protocol: Aim to recover the messages that had not been received in the old ring(As we know now[maybe you didn't know, it's in the down slide about 4 state of processor can be], we must get through a gather state and commit state then locate in the recovery state, which means there must be a new ring construction caused my new-joined processor or token-loss, so we need to recover the message those are not that "agreed" and "safe" to maintain the extended virtual synchrony)</p>
+				<p>4. The Flow Control Mechanism: Provide high performance under high load( Note, we are broadcast here. ). What adopts in the Totem SRP is one processor will put the broadcast messages it being unable to catch up the rate to handle in its buffer, and empty its buffer before processing the arrived tokem or broadcasting messages. </p>
+				<p><b>Reference: </b><code><a href="http://www.csie.fju.edu.tw/~yeh/research/papers/os-reading-list/amir-tocs95-totem.pdf" target="_blank">paper of SRP</a></code>  <code><a href="www.cse.scu.edu/~jholliday/COEN317F04/totem.ppt" target="_blank">the slides of paper</a></code><a href="{{root_url}}/images/HA/totem-slides-in-CN.pptx">Totem-slides-in-CN</a></p>
 			</div>
-			<p><b>Reference: </b><a href="http://www.csie.fju.edu.tw/~yeh/research/papers/os-reading-list/amir-tocs95-totem.pdf" target="_blank">Download the paper</a></p>
-			<p><b>Reference: </b><a href="www.cse.scu.edu/~jholliday/COEN317F04/totem.ppt" target="_blank">Download the paper</a></p>
+		</section>
+		<section>
+			<h2>The processors' Four States Shifting</h2>
+			<br>
+			<img src="{{root_url}}/images/HA/state-graph-of-membership-protocol.png" width="60%">
+			<div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">	
+			</div>
+		</section>
+		<section>
+			<h2>6 Steps in the Recovery Protocol</h2>
+			<br>
+			<div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">	
+			<p>1. Exchange Msgs with other processors that were member of the same old ring to ensure that they have the same set of messages broadcast on the same old ring but not delivered yet. (Only this msg in the Recovery Protocol is broadcast. )</p>
+			<p>2. Deliver the Msg which hasn't been deivered yet to one specific Application(the communication channel in one processor). </p>	
+			<p>3. Deliver the first Configuration Change message, which initiates the transitional configuration. </p>
+			<p>4. Deliver to the application further messages that could not be delivered in agreed or safe order on the old ring (because delivery might violate the requirements for agreed or safe delivery), but that can be delivered in agreed or safe order in the smaller transitional configuration(The difference with step 2). </p>
+			<p>5. Deliver the second Configuration Changes message, which initiates the new regular configuration. </p>
+			<p>6. Shift to the operational state.</p>
+			<br>
+			<p>Here is the example, transmition configuration is the can be understood as the Intersection of old and new configuration. </p>
+			</div>
+			<img src="{{root_url}}/images/HA/an_example_of_trans_ring.png" width="40%">
 		</section>
 		<section>
 			<h2>Totem Redundant Ring Protocol</h2>
 			<br>
 			<div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">	
-				<p></p>
-			</div>
+			<p><b>Aiming to:</b> Be able to use redundant networks in a fault-tolerant distributed system handling much heavier load than SRP. </p>
+			<p><b>Replication Styles:</b></p>
+			<p><b>Active replication:</b> All messages and tokens are sent over all networks at the same time. But Each message must be delivered(but the message will be received multi times by the processors, just filter the replicated Msg then deliver to the application. ) only once to the application. And there is another trick is how to handle the multi copies of token. </p>
+			<p><b>Passive replication:</b> Messages are sent alternately over one of the available networks. In the fault-free case, the maximum throughput equals the sum of the throughputs of all networks. </p>
+			<p><b>Active-passive replication:</b> Every message or token is sent K networks simultaneously(1 < K < N). </p>
 			<p><b>Reference: </b><a href="http://www.rcsc.de/pdf/icdcs02.pdf" target="_blank">Download the paper</a></p>
+			</div>
 		</section>
 	</section>
 	<section>
@@ -223,6 +253,8 @@ theme: beige
 				<li>tengine—Short for Transition Engine. Co- ordinates the execution of the transition graph pro- duced by the Policy Engine. </li>
 				<li>crmd—Short for Cluster Resource Management Daemon. Largely a message broker for the PE, TE, and LRM. Also elects a leader to co- ordinate the activities of the cluster. </li>
 				</ul>
+			<p>Pacemaker from Scratch Guides: <a href="http://clusterlabs.org/doc/en-US/Pacemaker/1.1-crmsh/html/Clusters_from_Scratch/index.html" target="_blank">Guides</a></p>
+			<p>Pacemaker Explained: <a href="http://clusterlabs.org/doc/en-US/Pacemaker/1.1-crmsh/html/Pacemaker_Explained/index.html" target="_blank">Manual</a></p>
 			</div>
 		</section>
 	</section>
