@@ -1,0 +1,611 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>DRBD and Heartbeat - XueChendi</title>
+  <meta name="author" content="Chendi.Xue">
+
+  
+  <meta name="description" content="These days, need to deploy a HA solution in our setup, and just write all these down helping the next time deployment. The Overview Here we have 2 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xuechendi.github.io/blog/2013/12/04/drbd-and-heartbeat">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="XueChendi" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+
+<body>
+	<div class="container">
+		<aside class="left">
+			<div class="inner-left">
+				<header>
+					<img src="/xuechendi.jpg?s=200" alt="Gravatar of Chendi.Xue " title="Gravatar of Chendi.Xue" class="profilepic" />
+<hgroup>
+  <h1><a href="/">XueChendi</a></h1>
+  
+    <h2 class="subtitle">Keep Simple, Keep Effecient</h2>
+   
+</hgroup>
+
+
+				</header>
+				<footer>
+					<p>
+	<a href="https://facebook.com/xuechendi" class="btn btn-dark">Facebook</a>
+	<a href="http://cn.linkedin.com/pub/chendi-xue/5b/935/b36/" class="btn btn-dark">Linkedin</a>
+</p>
+
+				</footer>
+			</div>
+		</aside>
+    	<section class="right">
+    		<div class="inner-right">
+                        <nav role="navigation">
+                                <ul class="subscription" data-subscription="rss">
+  <li class="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:xuechendi.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/#posts">About Me</a></li>
+  <li><a href="/blog/2013/11/14/resume/">Resume</a></li>
+  <li><a href="/blog/archives">Blog</a></li>
+</ul>
+
+
+                        </nav>
+    			<div id="posts">
+    			  	<article class="post">
+    
+  <header>
+    
+      <h1 class="entry-title">DRBD and Heartbeat</h1>
+    
+    
+      <p class="meta">
+        <!--
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-12-04T19:07:00+08:00" pubdate data-updated="true">Dec 4<span>th</span>, 2013</time>-->
+        <!--
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://xuechendi.github.io">Comments</a>
+        -->
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>These days, need to deploy a HA solution in our setup, and just write all these down helping the next time deployment.</p>
+
+<h2>The Overview</h2>
+
+<p><img src="/images/HA/IMG_0045.PNG" alt="overview" width=80%></p>
+
+<p>Here we have 2 setups, providing both web service for management and iscsi target service.</p>
+
+<p>What we wanna have is all the LVs in setup1(222.31.76.144) has a mirror in setup2(222.31.76.228) &mdash; so we need DRBD</p>
+
+<p>Then we use LV1 as lun0 to provide iscsi disk to client1, all client1 knows is that his iscsi target provider&rsquo;s ip address is 222.31.76.250(may be setup1 or setup2) &mdash; so we need heartbeat.</p>
+
+<p>Basically, setup1 will response to the client&rsquo;s request, only when setup&rsquo;s eth0 nic doesn&rsquo;t work(this will happen when setup1 is down), setup2 will continue to provide web service and iscsi service.</p>
+
+<p>Ok, another problem, when we need setup2 can continue to provide iscsi service, we need disks in setup to can also be the primary node in drbd semantic, so when data written to setup2, data can be sync to setup1.</p>
+
+<p>Let&rsquo;s just summary all the requirement here:</p>
+
+<ol>
+<li><p>Using heartbeat to provide a virtual ip 222.31.76.250 and watch the liveness of both setups.</p></li>
+<li><p>Using DRBD to sync LVs in setup1 and setup2, the syncronization can be both sides(dual primary).</p></li>
+<li><p>Need to keep in mind, when the sync link(eth0,192.168.1.*) breaks, there will be a split brain situation in our DRBD setting, so we need to record who is the latest iscsi target provider and use that one to recover the DRBD setting.</p></li>
+</ol>
+
+
+<h2>DRBD setting</h2>
+
+<p>1.The installation
+we need to install two parts of DRBD, the kmod who is the real implementation of drbd, and the drbdadm, which helps a lot to manage the drbd service.</p>
+
+<figure class='code'><figcaption><span>drbd rpm</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>drbd83-8.3.15-2.el5.centos.x86_64.rpm       kmod-drbd83-8.3.15-3.el5.centos.x86_64.rpm
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>2.The drbd config file
+We can start from the drbd conf file /etc/drbd.conf</p>
+
+<figure class='code'><figcaption><span>/etc/drbd.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#</span>
+</span><span class='line'><span class="c"># please have a a look at the example configuration file in</span>
+</span><span class='line'><span class="c"># /usr/share/doc/drbd83/drbd.conf</span>
+</span><span class='line'><span class="c">#</span>
+</span><span class='line'>include <span class="s2">&quot;drbd.d/global_common.conf&quot;</span>;
+</span><span class='line'>include <span class="s2">&quot;drbd.d/*.res&quot;</span>;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>As we can see, in this config file,it include a global_common.conf and *.res
+The first one writes some common setting for drbd, things like the sync protocol(Async, semi-sync, sync), net rate setting, blah, blah&hellip;
+The second one is what we need to build our resource, the config will be like below:</p>
+
+<figure class='code'><figcaption><span>mpx.res</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>resource mpx <span class="o">{</span>
+</span><span class='line'>    protocol C;
+</span><span class='line'>    net <span class="o">{</span>
+</span><span class='line'>        allow-two-primaries;
+</span><span class='line'>      <span class="o">}</span>
+</span><span class='line'>    syncer <span class="o">{</span>
+</span><span class='line'>          rate 1024M;  //sync bandwidth
+</span><span class='line'>     <span class="o">}</span>
+</span><span class='line'>    on super <span class="o">{</span>
+</span><span class='line'>        device /dev/drbd0;
+</span><span class='line'>        disk /dev/raid0/lv01;
+</span><span class='line'>        address 192.168.1.100:7789;
+</span><span class='line'>        meta-disk internal;
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>    on MPXHA <span class="o">{</span>
+</span><span class='line'>        device /dev/drbd0;
+</span><span class='line'>        disk /dev/vg01/lv01;
+</span><span class='line'>        address 192.168.1.152:7789;
+</span><span class='line'>        meta-disk internal;
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The protocol part says we will use sync method in this resource
+The net part says both nodes can be primary
+The last two parts describe the drbd device and the nic they used to sync data(Here we can direclty connect two setup by ethernet line.)</p>
+
+<p>The above *.res should has replication both in setup1 and setup2
+After that there is few command we need to first time build this DRBD resource.</p>
+
+<figure class='code'><figcaption><span>first building drbd resource</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>drbdadm create-md mpx // this should be <span class="k">done </span>both in setup1 and setup2
+</span><span class='line'>service drbd restart // both in setup1 and setup2
+</span><span class='line'>
+</span><span class='line'>drbdadm primary --force resource // only in setup1
+</span><span class='line'>
+</span><span class='line'>drbd-overview // can be <span class="k">done </span>both in setup1 or setup2, here I did in setup2
+</span><span class='line'>drbd driver loaded OK; device status:
+</span><span class='line'>version: 8.3.11 <span class="o">(</span>api:88/proto:86-96<span class="o">)</span>
+</span><span class='line'>srcversion: 2D876214BAAD53B31ADC1D6
+</span><span class='line'>m:res  cs          ro                 ds
+</span><span class='line'>0:mpx  SyncTarget  Secondary/Primary  Inconsistent/UpToDate  C
+</span><span class='line'>...    sync<span class="err">&#39;</span>ed:    25.4%              <span class="o">(</span>1373576/1837720<span class="o">)</span>K
+</span><span class='line'>
+</span><span class='line'>... <span class="nb">wait </span><span class="k">until</span>
+</span><span class='line'>
+</span><span class='line'>drbd driver loaded OK; device status:
+</span><span class='line'>version: 8.3.11 <span class="o">(</span>api:88/proto:86-96<span class="o">)</span>
+</span><span class='line'>srcversion: 2D876214BAAD53B31ADC1D6
+</span><span class='line'>m:res  cs         ro                 ds                 p  mounted  fstype
+</span><span class='line'>0:mpx  Connected  Secondary/Primary  UpToDate/UpToDate  C
+</span><span class='line'>
+</span><span class='line'>drbdadm primary mpx // in setup2
+</span><span class='line'>drbd-overview
+</span><span class='line'>drbd driver loaded OK; device status:
+</span><span class='line'>version: 8.3.11 <span class="o">(</span>api:88/proto:86-96<span class="o">)</span>
+</span><span class='line'>srcversion: 2D876214BAAD53B31ADC1D6
+</span><span class='line'>m:res  cs         ro               ds
+</span><span class='line'>0:mpx  Connected  Primary/Primary  UpToDate/UpToDate  C
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here is when we use drbd sevice as iscsi lun,yeah, you need this copy both in setup1 and setup2</p>
+
+<figure class='code'><figcaption><span>scst.conf</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># Automatically generated by SCST Configurator v2.2.0.</span>
+</span><span class='line'>HANDLER vdisk_fileio <span class="o">{</span>
+</span><span class='line'>    DEVICE vg01_lv01 <span class="o">{</span>
+</span><span class='line'>        filename /dev/drbd0 // ￼ drbd
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>TARGET_DRIVER iscsi <span class="o">{</span>
+</span><span class='line'>    enabled 1
+</span><span class='line'>    TARGET iqn.2011-1212.edu.cuc.storagelab:mpx.target1 <span class="o">{</span>
+</span><span class='line'>        cpu_mask 0000ff
+</span><span class='line'>        enabled 1
+</span><span class='line'>        rel_tgt_id 1
+</span><span class='line'>        GROUP xcd <span class="o">{</span>
+</span><span class='line'>            LUN 0 vg01_lv01
+</span><span class='line'>            INITIATOR iqn.2012-12.cn.edu.cuc.xcd:1234567
+</span><span class='line'>            INITIATOR iqn.1991-05.com.microsoft:win-p56rroe0srf
+</span><span class='line'>            cpu_mask 0000ff
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Heartbeat setting</h2>
+
+<ol>
+<li>The installation
+Seems we can not simply get heartbeat in yum
+Here is the solution</li>
+</ol>
+
+
+<figure class='code'><figcaption><span>heartbeat installation</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">Step-1 : Make download folder under the root.</span>
+</span><span class='line'><span class="go">[root@setup1 download]# mkdir /download</span>
+</span><span class='line'><span class="go">[root@setup1 download]# cd /download/</span>
+</span><span class='line'><span class="go">Step-2 : Download EPEL repository.</span>
+</span><span class='line'><span class="go">[root@setup1 download]# wget ftp://mirror.switch.ch/pool/1/mirror/scientificlinux/6rolling/i386/os/Packages/epel-release-6-5.noarch.rpm</span>
+</span><span class='line'><span class="go">Step-3 : Install Epel RPM.</span>
+</span><span class='line'><span class="go">rpm -ivUh epel-release-6-5.noarch.rpm </span>
+</span><span class='line'><span class="go">warning: epel-release-6-5.noarch.rpm: Header V4 DSA/SHA1 Signature, key ID 192a7d7d: NOKEY</span>
+</span><span class='line'><span class="go">Preparing...                ########################################### [100%]</span>
+</span><span class='line'><span class="go">   1:epel-release           ########################################### [100%]</span>
+</span><span class='line'><span class="go">Step-4 : Edit epel.repo file ‘/etc/yum.repos.d/epel.repo’ change the line # 6 ‘enable=1 to enable=0′.</span>
+</span><span class='line'><span class="go">[root@setup1 download]# vi /etc/yum.repos.d/epel.repo </span>
+</span><span class='line'><span class="go">[epel]</span>
+</span><span class='line'><span class="go">name=Extra Packages for Enterprise Linux 6 - $basearch</span>
+</span><span class='line'><span class="gp">#</span><span class="nv">baseurl</span><span class="o">=</span>http://download.fedoraproject.org/pub/epel/6/<span class="nv">$basearch</span>
+</span><span class='line'><span class="gp">mirrorlist=http://mirrors.fedoraproject.org/metalink?repo=epel-6&amp;amp;arch=$</span>basearch
+</span><span class='line'><span class="go">failovermethod=priority</span>
+</span><span class='line'><span class="go">enabled=0</span>
+</span><span class='line'><span class="go">CentOS 6 :  </span>
+</span><span class='line'><span class="go">Step-5 : Now we are ready to install Heartbeat with yum command.</span>
+</span><span class='line'><span class="go">[root@setup1 download]# yum --enablerepo=epel install heartbeat</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<ol>
+<li>The setting</li>
+</ol>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/ha.cf /etc/ha.d/</span>
+</span><span class='line'><span class="go">[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/haresources /etc/ha.d/</span>
+</span><span class='line'><span class="go">[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/authkeys /etc/ha.d/</span>
+</span><span class='line'><span class="go">[root@setup1 download]# vim /etc/ha.d/ha.cf</span>
+</span><span class='line'><span class="go">debugfile /var/log/ha-debug</span>
+</span><span class='line'><span class="go">keepalive 2</span>
+</span><span class='line'><span class="go">deadtime 10</span>
+</span><span class='line'><span class="go">warntime 6</span>
+</span><span class='line'><span class="go">initdead 120</span>
+</span><span class='line'><span class="go">udpport 694</span>
+</span><span class='line'><span class="go">ucast eth0 222.31.76.228</span>
+</span><span class='line'><span class="go">node   super</span>
+</span><span class='line'><span class="go">node   MPXHA</span>
+</span><span class='line'><span class="go">auto_failback on</span>
+</span><span class='line'><span class="go">respawn hacluster /usr/lib64/heartbeat/ipfail</span>
+</span><span class='line'><span class="go">[root@setup2 download]# vim /etc/ha.d/ha.cf</span>
+</span><span class='line'><span class="go">debugfile /var/log/ha-debug</span>
+</span><span class='line'><span class="go">keepalive 2</span>
+</span><span class='line'><span class="go">deadtime 10</span>
+</span><span class='line'><span class="go">warntime 6</span>
+</span><span class='line'><span class="go">initdead 120</span>
+</span><span class='line'><span class="go">udpport 694</span>
+</span><span class='line'><span class="go">ucast eth0 222.31.76.144</span>
+</span><span class='line'><span class="go">node   super</span>
+</span><span class='line'><span class="go">node   MPXHA</span>
+</span><span class='line'><span class="go">auto_failback on</span>
+</span><span class='line'><span class="go">respawn hacluster /usr/lib64/heartbeat/ipfail</span>
+</span><span class='line'><span class="go">[root@setup1&amp;setup2 download]# vim /etc/ha.d/haresouces</span>
+</span><span class='line'><span class="go">super IPaddr::222.31.76.250/24/eth0</span>
+</span><span class='line'><span class="go">[root@setup1&amp;setup2 download]# service heartbeat restart</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>There is also one problem we mentioned before called &ldquo;split brain&rdquo;, here is the way to solve this situation</h2>
+
+<p>This situation happens when the eth0(the link used to sync data beween drbd resources are broken), and both drbd will see itself as primary and the other as unknown</p>
+
+<figure class='code'><figcaption><span>when split brain happens</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@super ~]# service drbd status</span>
+</span><span class='line'><span class="go">drbd driver loaded OK; device status:</span>
+</span><span class='line'><span class="go">version: 8.3.11 (api:88/proto:86-96)</span>
+</span><span class='line'><span class="go">srcversion: 2D876214BAAD53B31ADC1D6</span>
+</span><span class='line'><span class="go">m:res  cs          ro               ds                 p       mounted  fstype</span>
+</span><span class='line'><span class="go">0:mpx  StandAlone  Primary/Unknown  UpToDate/DUnknown  r-----</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The way to tackle this problem when both drbd device also act as the iscsi lun</p>
+
+<figure class='code'><figcaption><span>How to solve split brain problem</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">service scst stop</span>
+</span><span class='line'><span class="go">drbdadm secondary mpx</span>
+</span><span class='line'><span class="go">drbdadm disconnect mpx</span>
+</span><span class='line'><span class="go">drbdadm -- --discard-my-data connect mpx</span>
+</span><span class='line'><span class="go">ssh 222.31.76.144 &quot;drbdadm connect mpx&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">service drbd status </span>
+</span><span class='line'>
+</span><span class='line'><span class="go">drbd driver loaded OK; device status:</span>
+</span><span class='line'><span class="go">version: 8.3.11 (api:88/proto:86-96)</span>
+</span><span class='line'><span class="go">srcversion: 2D876214BAAD53B31ADC1D6</span>
+</span><span class='line'><span class="go">m:res  cs          ro                 ds</span>
+</span><span class='line'><span class="go">0:mpx  SyncTarget  Secondary/Primary  Inconsistent/UpToDate  C</span>
+</span><span class='line'><span class="go">...    sync&#39;ed:    25.4%              (1373576/1837720)K</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">drbd driver loaded OK; device status:</span>
+</span><span class='line'><span class="go">version: 8.3.11 (api:88/proto:86-96)</span>
+</span><span class='line'><span class="go">srcversion: 2D876214BAAD53B31ADC1D6</span>
+</span><span class='line'><span class="go">m:res  cs         ro                 ds                 p  mounted  fstype</span>
+</span><span class='line'><span class="go">0:mpx  Connected  Secondary/Primary  UpToDate/UpToDate  C</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">drbdadm primary mpx</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">drbd driver loaded OK; device status:</span>
+</span><span class='line'><span class="go">version: 8.3.11 (api:88/proto:86-96)</span>
+</span><span class='line'><span class="go">srcversion: 2D876214BAAD53B31ADC1D6</span>
+</span><span class='line'><span class="go">m:res  cs         ro               ds</span>
+</span><span class='line'><span class="go">0:mpx  Connected  Primary/Primary  UpToDate/UpToDate  C</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">service scst start</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+</article>
+
+
+        <div class="sharing">
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+
+
+
+<section id="comments">
+    <div id="disqus_thread"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+
+    			</div>
+    			<footer id="footer">
+    				<p class="credit">
+  Copyright &copy; 2014 - Chendi.Xue. Powered by <a href="http://octopress.org">Octopress</a>
+</p>
+
+
+    			</footer>
+    			
+
+<script type="text/javascript">
+      var disqus_shortname = 'XueChendi';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://xuechendi.github.io/blog/2013/12/04/drbd-and-heartbeat/';
+        var disqus_url = 'http://xuechendi.github.io/blog/2013/12/04/drbd-and-heartbeat/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+
+
+
+<link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+
+
+
+
+    		</div>
+    	</section>
+  	</div>
+</body>
+</html>

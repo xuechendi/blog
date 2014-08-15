@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Ceph | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/ceph/atom.xml" rel="self"/>
+  <link href="http://xuechendi.github.io/"/>
+  <updated>2014-08-15T06:16:21+08:00</updated>
+  <id>http://xuechendi.github.io/</id>
+  <author>
+    <name><![CDATA[Chendi.Xue]]></name>
+    <email><![CDATA[xuechendi@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Dive into Ceph Write IO Path]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/18/dive-into-ceph-write-io-path/"/>
+    <updated>2013-12-18T14:41:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/18/dive-into-ceph-write-io-path</id>
+    <content type="html"><![CDATA[<p><em>After talking with a friend of mine who is really intelligent and awesome and intelligent, just thinking about to post this article to get through the Ceph OSD Write IO path. There I am sorry to say must exists some misunderstanding in this article, but I hope it will still means something for people who read this article&hellip;</em></p>
+
+<p><em>Ok, start here.</em></p>
+
+<p>======</p>
+
+<p>There is a IO path graph on ceph.com, pls click <code><a href="http://ceph.com/docs/master/dev/osd_internals/osd_throttles/?highlight=wbthrottle">OSD Internals</a></code>, I find the graph is a bit difficult to see, so redraw it in a vertical way</p>
+
+<div style="float:left;">
+<div style="float:left; width:58%;">
+    <div style="border-left:red solid 5px; padding-left:5%; ">
+    <p>**Pipe::Reader** call the function DispatchQueue::enqueue, put the msg into mqueue</p>
+    <p>**DispatchThread** loops in getting msg from mqueue and dispatch the msg to who is able to handle( msgr->ms_deliver_dispatch(m), in this case, OSD::ms_dispatch(m) will be called then )<p>
+    </div>
+    <br>
+    <div style="border-left:green solid 5px; padding-left:5%;">
+    <p>**OSD::_dispatch** switch (msg->type), in this case, would be "CEPH_MSG_OSD_OP", call handle_op(op) </p>
+    <p>**handle_op** do some preparation before actually applying this op, includes refresh the map, check the obj name and data, remaining space, then it cal the pgid and lock the pg, call enqueue_op to put the op into osd->op_wq with pgid and op. </p>
+    <p>**worker wq** ThreadPool::worker loops all the time to join_old_threads, then dequeue any items in the workqueue, by now, that would be our write op. Then work_queue start to process this op request by OSD::OpWQ::_process function, then OSD::dequeue_op function, and do_request. After dequeue, the pg lock is then released.</p>
+    </div>
+</div>
+
+<img src="/images/ceph_write_path/io_path_1.png" style="margin-left:5%; width:35%; border:5px solid #222; float:left;">
+</div>
+
+
+<br>
+
+
+<div style="width:100%; float:left; border-left:#00FFFF solid 5px; padding-left:5%; font-size:10px;">
+    <p>**do_request** Seems it calls the do_request implemented in ReplicatedPG.cc, then calls do_op(op) also implemented in ReplicatedPG.cc.</p>
+    <p>**do_op** 
+</p>
+</div>
+
+
+<br>
+
+
+<br>
+
+
+<p>Below are the logs :</p>
+
+<p><div style="float:left; font-size:12px;  border: solid #999 1px; background-color: #eee; width:100%; overflow: scroll; padding:5px; white-space:nowrap;text-overflow:scroll;">
+<br>root@MPXDELL2:~# tail -f /var/log/ceph/osd.15.log  | grep &ldquo;dispatch\|queue_op\|<red>worker</red>&rdquo;
+<br>2013-12-18 19:42:51.999692 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x23d6000 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:51.999748 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9bc40 prio 63 cost 39 latency 0.000151 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:51.999814 7f2c8d76e700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:51.999824 7f2c8d76e700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bc40 prio 63 cost 39 latency 0.000228 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4 pg pg[3.e77( v 267'732 (0'0,267'732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267'732 active+clean]
+<br>2013-12-18 19:42:52.000519 7f2c8d76e700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bc40 finish
+<br>2013-12-18 19:42:52.000535 7f2c8d76e700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.001161 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x23d6480 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.001188 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9bb60 prio 63 cost 24 latency 0.000107 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.001213 7f2c8af69700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:52.001230 7f2c8af69700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bb60 prio 63 cost 24 latency 0.000148 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4 pg pg[3.e77( v 267'732 (0'0,267'732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267'732 active+clean]
+<br>2013-12-18 19:42:52.001615 7f2c8af69700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bb60 finish
+<br>2013-12-18 19:42:52.001627 7f2c8af69700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.002200 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x23d6240 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.002223 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9ba80 prio 63 cost 0 latency 0.000099 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.002275 7f2c8ff73700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:52.002293 7f2c8ff73700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9ba80 prio 63 cost 0 latency 0.000169 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4 pg pg[3.e77( v 267'732 (0'0,267'732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267'732 active+clean]
+<br>2013-12-18 19:42:52.002800 7f2c8ff73700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9ba80 finish
+<br>2013-12-18 19:42:52.002805 7f2c8ff73700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.004577 7f2ca26c5700 12 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ start processing 0x2aa1dd80 (1 active)
+<br>2013-12-18 19:42:52.005139 7f2ca26c5700 15 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ done processing 0x2aa1dd80 (0 active)
+<br>2013-12-18 19:42:52.005334 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x2ad1b480 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.005373 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9b9a0 prio 63 cost 111 latency 0.000124 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.005444 7f2c97f83700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:52.005454 7f2c97f83700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b9a0 prio 63 cost 111 latency 0.000205 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4 pg pg[3.e77( v 267'733 (0'0,267'733] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267'733 active+clean]
+<br>2013-12-18 19:42:52.006585 7f2c97f83700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b9a0 finish
+<br>2013-12-18 19:42:52.006601 7f2c97f83700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.010185 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x2ad1b240 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.010207 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9b8c0 prio 63 cost 0 latency 0.000168 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.010259 7f2c96780700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:52.010269 7f2c96780700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b8c0 prio 63 cost 0 latency 0.000230 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4 pg pg[3.e77( v 267'733 (0'0,267'733] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267'733 active+clean]
+<br>2013-12-18 19:42:52.010692 7f2c96780700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b8c0 finish
+<br>2013-12-18 19:42:52.010696 7f2c96780700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.011222 7f2ca1ec4700 12 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ start processing 0x2aa1dd80 (1 active)
+<br>2013-12-18 19:42:52.011701 7f2ca1ec4700 15 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ done processing 0x2aa1dd80 (0 active)
+<br>2013-12-18 19:42:56.918744 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x2ad94380 pg_stats_ack(1 pgs tid 18) v1
+</textarea></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Ceph Best known Performance Collection]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection/"/>
+    <updated>2013-12-13T15:35:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection</id>
+    <content type="html"><![CDATA[<p>In this posting, I hope to collect  <em>TILL NOW BEST KNOWN</em>  Ceph Performance and also their deployment/setup method.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Building Ceph]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/12/building-ceph/"/>
+    <updated>2013-12-12T11:17:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/12/building-ceph</id>
+    <content type="html"><![CDATA[<p>Actually, I had bulid ceph from codes for many times, just each time, I have to struggle a little bit, for I always forget install some libraries.</p>
+
+<p>So, record things here</p>
+
+<p>I found ceph.com have also detailed its &ldquo;Building from Codes&rdquo; doc, indeed, much detailed than previous version</p>
+
+<p>But seems I still missing some packages when doing &ldquo;make&rdquo;</p>
+
+<p><code><a href="http://ceph.com/docs/master/install/build-ceph/">http://ceph.com/docs/master/install/build-ceph/</a></code></p>
+
+<p>```console pre-make-ceph-packages
+sudo apt-get install pkg-config autotools-dev autoconf automake cdbs gcc g++ git libboost-dev libedit-dev libssl-dev libtool libfcgi libfcgi-dev libfuse-dev linux-kernel-headers libcrypto++-dev libcrypto++ libexpat1-dev libboost-thread-dev uuid-dev libkeyutils-dev libgoogle-perftools-dev libatomic-ops-dev libaio-dev libgdata-common libgdata13 libsnappy-dev libleveldb-dev libboost-program-options-dev
+cd ceph
+./autogen.sh
+./configure
+make
+make install</p>
+
+<p>```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[How to do Ceph Latency Breakdown]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown/"/>
+    <updated>2013-12-05T10:38:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/05/how-to-do-ceph-latency-breakdown</id>
+    <content type="html"><![CDATA[<h2>The Ceph Latency Breakdown process includes 3 steps:</h2>
+
+<h3>1. Enable Log Configuration or Other performance count mechanism to record the runtime infomation.</h3>
+
+<h3>2. Produce the workload and meanwhile dump the perfcounter</h3>
+
+<h3>3. Parse the perfcounter dump data</h3>
+
+<h2>Details:</h2>
+
+<p>In ceph, a perfcounter mechanism has been adopted to do the latency breakdown, and the runtime info can be dumped by the admin_socket is an internal implementation in Ceph.</p>
+
+<p>example:</p>
+
+<p><1> codes
+``` c git diff
+diff &mdash;git a/src/osd/OSD.cc b/src/osd/OSD.cc
+index d34bb9c..6c308d3 100644
+&mdash;&ndash; a/src/osd/OSD.cc
++++ b/src/osd/OSD.cc
+@@ -7055,10 +7055,10 @@ PGRef OSD::OpWQ::_dequeue()</p>
+
+<p> void OSD::OpWQ::_process(PGRef pg, ThreadPool::TPHandle &amp;handle)
+ {
+&ndash;  utime_t pg_lock_lat = ceph_clock_now(g_ceph_context);
++  utime_t start = ceph_clock_now(g_ceph_context);
+   pg->lock_suspend_timeout(handle);
+&ndash;  pg_lock_lat = ceph_clock_now(g_ceph_context) &ndash; pg_lock_lat;
+&ndash;  osd->logger->tinc(l_osd_pg_lock_lat, pg_lock_lat);
++  utime_t end = ceph_clock_now(g_ceph_context);
++  osd->logger->tinc(l_osd_pg_lock_lat, end &ndash; start);</p>
+
+<p>   OpRequestRef op;
+   {
+```</p>
+
+<p>Current Ceph Version only enabled admin_socket in Ceph Cluster Side, so we need to enable it in RBD side.</p>
+
+<p><2> dump the data</p>
+
+<p>``` bash ceph.conf</p>
+
+<h1>Enable the admin_socket in QEMU RBD</h1>
+
+<p>check ceph.conf
+perf = false
+&ndash;></p>
+
+<h1>perf = false</h1>
+
+<p>```</p>
+
+<p>```xml QEMU disk.xml</p>
+
+<pre><code>&lt;disk type='network' device='disk'&gt;
+  &lt;driver name='qemu' type='raw' cache='none'/&gt;
+  &lt;source protocol='rbd' name='xcd_8osd/volume-3:admin_socket=/var/run/ceph/node5_1.asok'/&gt;
+  &lt;target dev='vdb' bus='virtio'/&gt;
+  &lt;serial&gt;12f70341-d199-4fca-9270-56e5d6b80061&lt;/serial&gt;
+  &lt;alias name='virtio-disk1'/&gt;
+  &lt;address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/&gt;
+&lt;/disk&gt;
+</code></pre>
+
+<p><code>
+</code> console
+virsh attach instance1 disk.xml</p>
+
+<p>ceph &mdash;admin-daemon /var/run/ceph/${osd} perf dump >> ${osd}.txt
+```</p>
+
+<hr>
+
+
+<h2>Below is the summary of all scripts:</h2>
+
+<p><a href ="/downloads/Ceph_Latency_Breakdown_Script.zip"><code style="font-family: 'Fjalla One','Georgia','Helvetica Neue',Arial,sans-serif;font-weight:900;font-size:12px;">download the script</code></a></p>
+
+<h3>Script to mkceph:(in the dir &ldquo;mkceph&rdquo;)</h3>
+
+<p>mkceph_with_pg.sh</p>
+
+<h3>Script to produce workload:(all put in the dir &ldquo;run the test&rdquo;)</h3>
+
+<p><b>run.sh</b>: aim to change the <code>ceph.conf</code> op thread number setting, then restart ceph, vm, and call <code>test.sh</code> to start the test. The test result will then be stored in the path &ldquo;/data/xcd/ceph-CephXCD/run_${id}&rdquo;</p>
+
+<p><b>test.sh</b>: aim to clean run a vm_num loadline test, call <code>mhost-volume-test-xcd.sh</code> to run the actual test</p>
+
+<p><b>mhost-volume-test-xcd.sh</b>: calls <code>clean_cache_on_ceph.sh</code>,<code>check_readahead.sh</code>, <code>volume-test_in_vm.sh</code>, <code>all.fio</code>, <code>volume-test_in_pc.sh</code>, <code>ceph_perf_counter_dump.sh</code>, <code>volume-test_in_ceph.sh</code>, <code>check_cephHealth.sh</code> to run the test(producing workload and collecting runtime system info &amp; ceph info), then collects all the data back to the Node1.
+```console</p>
+
+<h1>example:</h1>
+
+<p>./mhost-volume-test-xcd.sh 1 $vm_num 3 4k &ldquo;vmNum_&rdquo;$vm_num ${qd} node13_net
+```
+tip: There is a VM list stored in file &ldquo;node13_net&rdquo;</p>
+
+<h3>Script to parse the data:</h3>
+
+<p><b>getLatbreakdown.sh</b>: aim to parse latency data from <code>*.asok</code> files using <code>post_perf.py</code></p>
+
+<p><b>getResult.sh</b>: aim to parse iostat, mpstat data. It calls <code>post_volume_xcd.sh</code>, <code>post_osd.sh</code>, <code>post_cpu.sh</code>, <code>iostat.sh</code></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[AIO-STRESS vs. FIO]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio/"/>
+    <updated>2013-11-15T01:05:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio</id>
+    <content type="html"><![CDATA[<p>There is no big gap to me in producing workload by AIO-STREE and FIO.</p>
+
+<p>Just because I haven&rsquo;t using much more advanced feature in FIO like replay trace, and I just using libaio as the driver.</p>
+
+<p>But here, I just wanna show some interesting test to see some behavior by different setting of io_depth and io_batch. And <code>sadly</code> that is just some wrong setting I did before and produced some strange data then I just realized how these settings mean. T_T</p>
+
+<h2>Just follow my lead to see how I found this wrong setting. ^_^</h2>
+
+<p><img src="/images/AIO_vs_FIO/1.png" alt="findings" /></p>
+
+<p>After a loadline test of io_depth setting, I just found the figures followed some rules, so using qemu logs, I draw above graph. This is a graph recording the io request intervals sending from qemu to librbd, and catched in librbd logs.</p>
+
+<p>As we can see, when we set the queue_depth as 8, the first io request has quite small interval(0.075ms), but the interval between the 8th and 9th io request is pretty long(1.6ms). And if we set the queue_depth as 16, or 32. The burst interval happened just between the 16th to 17th, and 32th to 33th respectively.</p>
+
+<p>So there comes the deduction:
+Queue will send out all requests, then wait the last request completes . After that it starts to send out new queue.</p>
+
+<h2>How to prove it?</h2>
+
+<h3>Methodology:</h3>
+
+<ol>
+<li>. Set queue depth = 64</li>
+<li>. make the 42th request sleep 3s in completion thread</li>
+</ol>
+
+
+<h3>&mdash;> If RBD waits 3s then receives the 65th requests, we can confirm the deduction.</h3>
+
+<h3>How to do this?</h3>
+
+<p>There is a function in librbd named C_AioRead::finish in AioCompletion.cc, so what we need to do is just randomly block this function for 3s, and see what happens.</p>
+
+<p><img src="/images/AIO_vs_FIO/2.png" alt="proving" /></p>
+
+<p>Aha! The results just show as what we expect.</p>
+
+<h3>But there are still 3 possibilities can produce result like this.</h3>
+
+<p>1.Wrong workload setting?
+2.Ceph RBD design ?  if there is some lock in finish thread that blocks the submit thread
+3.Virtio ?</p>
+
+<p>The situation produced by FIO</p>
+
+<p><img src="/images/AIO_vs_FIO/3.png" alt="proving" /></p>
+
+<p>From this graph, we can see the result is really different by using aio-stress, which can help us to exclude last two possibilities. That means we must do some wrong setting in aio-stress or aio-stress just have some wierd strategy design.</p>
+
+<p>Also we can see the difference in logs.</p>
+
+<p><img src="/images/AIO_vs_FIO/4.png" alt="proving" /></p>
+
+<p><code>Here I will add some aio-stress codes digging into soon, just not now~ Sorry</code></p>
+
+<hr>
+
+
+<p>The right setting for random io in aio-stress to act more meet our demand (Here I said random io is because this setting may result in no io merge in sequential io)</p>
+
+<p><code>console
+./aio-stress -O -o 3 -i 1 -d 64 -r4k -s 4m /dev/vdb
+</code></p>
+
+<p><img src="/images/AIO_vs_FIO/5.png" alt="proving" /></p>
+
+<p><img src="/images/AIO_vs_FIO/6.png" alt="proving" /></p>
+]]></content>
+  </entry>
+  
+</feed>

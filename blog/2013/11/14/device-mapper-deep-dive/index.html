@@ -1,0 +1,340 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Device-Mapper deep dive - XueChendi</title>
+  <meta name="author" content="Chendi.Xue">
+
+  
+  <meta name="description" content="I used to stuck in all these terms and concepts for like really long time, just trying to get everything clear by writing. Storage subsystem Overview &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="XueChendi" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+
+<body>
+	<div class="container">
+		<aside class="left">
+			<div class="inner-left">
+				<header>
+					<img src="/xuechendi.jpg?s=200" alt="Gravatar of Chendi.Xue " title="Gravatar of Chendi.Xue" class="profilepic" />
+<hgroup>
+  <h1><a href="/">XueChendi</a></h1>
+  
+    <h2 class="subtitle">Keep Simple, Keep Effecient</h2>
+   
+</hgroup>
+
+
+				</header>
+				<footer>
+					<p>
+	<a href="https://facebook.com/xuechendi" class="btn btn-dark">Facebook</a>
+	<a href="http://cn.linkedin.com/pub/chendi-xue/5b/935/b36/" class="btn btn-dark">Linkedin</a>
+</p>
+
+				</footer>
+			</div>
+		</aside>
+    	<section class="right">
+    		<div class="inner-right">
+                        <nav role="navigation">
+                                <ul class="subscription" data-subscription="rss">
+  <li class="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:xuechendi.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/#posts">About Me</a></li>
+  <li><a href="/blog/2013/11/14/resume/">Resume</a></li>
+  <li><a href="/blog/archives">Blog</a></li>
+</ul>
+
+
+                        </nav>
+    			<div id="posts">
+    			  	<article class="post">
+    
+  <header>
+    
+      <h1 class="entry-title">Device-Mapper Deep Dive</h1>
+    
+    
+      <p class="meta">
+        <!--
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-11-14T19:40:00+08:00" pubdate data-updated="true">Nov 14<span>th</span>, 2013</time>-->
+        <!--
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://xuechendi.github.io">Comments</a>
+        -->
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I used to stuck in all these terms and concepts for like really long time, just trying to get everything clear by writing.</p>
+
+<h2>Storage subsystem</h2>
+
+<h3>Overview</h3>
+
+<p><img src="/images/dm_deep_dive/overview.png" alt="overview" width=80%></p>
+
+<p>BIO is the unit to map data in the memory to generic block offset.
+When generic block layer gets bio units, it calls io scheduler to combine bios into request to specific device.
+Then requests can be sent to real device or virtual block device like software raid or logic volume(using MD or Device Mapper modules).</p>
+
+<p><img src="/images/dm_deep_dive/bio.png" alt="bio" width=80%></p>
+
+<p>Actually BIO units point to a much smaller unit named bio_vec which is the exactly unit point to the memory, and BIO also has one field record which block device and which sector it wanna to read/write.(Notice, the block device here is kind of a generic idea, could be some virtual block device)</p>
+
+<p>The smart use of bio_vec help kernel to support scatter/Gather I/O, so that BIO can map some scatter part in mem to some continuous part in block device.</p>
+
+<p><img src="/images/dm_deep_dive/request.png" alt="request" width=80%></p>
+
+<p>When BIO unit received by generic block layer, kernel will do some &ldquo;merge and sort&rdquo; operations then hand the combined BIOs to block device. All these work can be done in the IO scheduler layer and then all BIO units are combined into one and one request, which also be linked by a pointer named &ldquo;request_queue&rdquo; store in bdev struct(gendisk).</p>
+
+<p>Then the whole idea is pretty clear, there is a picture shows some important function to translate a fs syscall into requests to block devices.</p>
+
+<p><img src="/images/dm_deep_dive/functions.png" alt="functions" width=50%></p>
+
+<p>Submit_bio is a generic api to submit bio to generic block layer(of course by its name&hellip;)</p>
+
+<p>generic_make_request puts BIO into bio_list, then __generic_make_request will see if this bio is suitable to make request or it is delivered to some stack device like Device Mapper(in this situation, __generic_make_request will produce a new bio and call generic_make_request).</p>
+
+<p>__make_request_fn() then pus BIO into request_queue, if this function returns 0, the BIO is delivered to the real block device, or it may continues to call __make_request_fn until it delivered to real block device(like Device Mapper).</p>
+
+<p>In fact, the request_queue also will not be directly tackled by block device, the device will use some method named &ldquo;Plugging/Unplugging&rdquo; to tackles these requests.</p>
+
+<p><img src="/images/dm_deep_dive/structures.png" alt="structures" width=50%></p>
+
+<p>Now let&rsquo;s see a linked graph of some important structs in block-level subsystem. Every block device has a field named gendisk(generic disk), and generic disk has a field to record its request_queue, and since each type of block device has its own implementation of read and write, the gendisk also has a field named private_data to point to the corresponding block device(also, the block device can be real or virtual).</p>
+
+<h2>Then, after all the general idea of block-layer subsystem, let&rsquo;s talk about <code>Device Mapper</code></h2>
+
+<h3>What is Device-Mapper</h3>
+
+<ul>
+<li>A block device mapping facility available in Linux Kernel.</li>
+<li>A component required by LVM2 to support the mapping between logical volumes and physical storage devices.</li>
+<li>Device-mapper provides a generic way to create virtual layers of block devices that can do different things on top of real block devices like striping, concatenation, mirroring, snapshotting, etc&hellip;</li>
+</ul>
+
+
+<h3>Here is the Usecase</h3>
+
+<p>Before lv creation</p>
+
+<p><img src="/images/dm_deep_dive/Before lv creation.png" alt="Before lv creation" width=40%></p>
+
+<p>After lv creation</p>
+
+<p><img src="/images/dm_deep_dive/after lv creation.png" alt="after lv creation" width=40%></p>
+
+<p>The thing should notice here is that a dm-0 device in /sys/block is created, which indicates that Logic Volume is a &ldquo;device mapper&rdquo; device.</p>
+
+<p><img src="/images/dm_deep_dive/after lv creation2.png" alt="after lv creation" width=40%></p>
+
+<h3>another device mapper usecase</h3>
+
+<p><img src="/images/dm_deep_dive/dm_usecase2.png" alt="dm_usecase2" width=60%></p>
+
+<h3>Here is the Device Mapper Overview</h3>
+
+<p><img src="/images/dm_deep_dive/dm_overview.png" alt="dm_overview" width=50%></p>
+
+<p><img src="/images/dm_deep_dive/dm_struct.png" alt="dm_struct" width=50%></p>
+
+<p>DM Devices in Ubuntu 12.10,kernel 3.6.3</p>
+
+<p><img src="/images/dm_deep_dive/dm_targets.png" alt="dm_targets" width=50%></p>
+
+<p>Linear Device target-type example</p>
+
+<figure class='code'><figcaption><span>linear-device-struct</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="k">struct</span> <span class="n">target_type</span> <span class="n">linear_target</span> <span class="o">=</span> <span class="p">{</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">name</span><span class="err">   </span><span class="o">=</span> <span class="s">&quot;linear&quot;</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">version</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">},</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">module</span> <span class="o">=</span> <span class="n">THIS_MODULE</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">ctr</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_ctr</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">dtr</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_dtr</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">map</span><span class="err">    </span><span class="o">=</span> <span class="n">linear_map</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">linear_status</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">ioctl</span><span class="err">  </span><span class="o">=</span> <span class="n">linear_ioctl</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">merge</span><span class="err">  </span><span class="o">=</span> <span class="n">linear_merge</span><span class="p">,</span><span class="err">   </span>
+</span><span class='line'>  <span class="p">.</span><span class="n">iterate_devices</span> <span class="o">=</span> <span class="n">linear_iterate_devices</span><span class="p">,</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Let&rsquo;s see the codes</h3>
+
+<figure class='code'><figcaption><span>How DM handle the device creation command?</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">int</span> <span class="nf">dm_create</span><span class="p">(</span><span class="kt">int</span> <span class="n">minor</span><span class="p">,</span> <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">**</span><span class="n">result</span><span class="p">){</span>
+</span><span class='line'><span class="err">   </span>   <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">*</span><span class="n">md</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">md</span> <span class="o">=</span> <span class="n">alloc_dev</span><span class="p">(</span><span class="n">minor</span><span class="p">);</span><span class="err">   </span> 
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">md</span><span class="p">)</span><span class="err">       </span>      
+</span><span class='line'>      <span class="k">return</span> <span class="o">-</span><span class="n">ENXIO</span><span class="p">;</span><span class="err"> </span>   
+</span><span class='line'>  <span class="n">dm_sysfs_init</span><span class="p">(</span><span class="n">md</span><span class="p">);</span><span class="err">   </span>   
+</span><span class='line'>  <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="n">md</span><span class="p">;</span><span class="err">   </span> 
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>How DM handle the read/write command? </span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">dm_request</span><span class="p">(</span><span class="k">struct</span> <span class="n">request_queue</span> <span class="o">*</span><span class="n">q</span><span class="p">,</span> <span class="k">struct</span> <span class="n">bio</span> <span class="o">*</span><span class="n">bio</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">struct</span> <span class="n">mapped_device</span> <span class="o">*</span><span class="n">md</span> <span class="o">=</span> <span class="n">q</span><span class="o">-&gt;</span><span class="n">queuedata</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">dm_request_based</span><span class="p">(</span><span class="n">md</span><span class="p">))</span>
+</span><span class='line'>      <span class="n">blk_queue_bio</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">bio</span><span class="p">);</span>  <span class="c1">//Using dm_target rules to reconstruct the bio</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>      <span class="n">_dm_request</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">bio</span><span class="p">);</span>    <span class="c1">//split and process this bio</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+</article>
+
+
+        <div class="sharing">
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+
+
+
+<section id="comments">
+    <div id="disqus_thread"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+
+    			</div>
+    			<footer id="footer">
+    				<p class="credit">
+  Copyright &copy; 2014 - Chendi.Xue. Powered by <a href="http://octopress.org">Octopress</a>
+</p>
+
+
+    			</footer>
+    			
+
+<script type="text/javascript">
+      var disqus_shortname = 'XueChendi';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/';
+        var disqus_url = 'http://xuechendi.github.io/blog/2013/11/14/device-mapper-deep-dive/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+
+
+
+<link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+
+
+
+
+    		</div>
+    	</section>
+  	</div>
+</body>
+</html>

@@ -1,0 +1,271 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Dive into Ceph Write IO Path - XueChendi</title>
+  <meta name="author" content="Chendi.Xue">
+
+  
+  <meta name="description" content="After talking with a friend of mine who is really intelligent and awesome and intelligent, just thinking about to post this article to get through &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xuechendi.github.io/blog/2013/12/18/dive-into-ceph-write-io-path">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="XueChendi" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+
+<body>
+	<div class="container">
+		<aside class="left">
+			<div class="inner-left">
+				<header>
+					<img src="/xuechendi.jpg?s=200" alt="Gravatar of Chendi.Xue " title="Gravatar of Chendi.Xue" class="profilepic" />
+<hgroup>
+  <h1><a href="/">XueChendi</a></h1>
+  
+    <h2 class="subtitle">Keep Simple, Keep Effecient</h2>
+   
+</hgroup>
+
+
+				</header>
+				<footer>
+					<p>
+	<a href="https://facebook.com/xuechendi" class="btn btn-dark">Facebook</a>
+	<a href="http://cn.linkedin.com/pub/chendi-xue/5b/935/b36/" class="btn btn-dark">Linkedin</a>
+</p>
+
+				</footer>
+			</div>
+		</aside>
+    	<section class="right">
+    		<div class="inner-right">
+                        <nav role="navigation">
+                                <ul class="subscription" data-subscription="rss">
+  <li class="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:xuechendi.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/#posts">About Me</a></li>
+  <li><a href="/blog/2013/11/14/resume/">Resume</a></li>
+  <li><a href="/blog/archives">Blog</a></li>
+</ul>
+
+
+                        </nav>
+    			<div id="posts">
+    			  	<article class="post">
+    
+  <header>
+    
+      <h1 class="entry-title">Dive Into Ceph Write IO Path</h1>
+    
+    
+      <p class="meta">
+        <!--
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-12-18T14:41:00+08:00" pubdate data-updated="true">Dec 18<span>th</span>, 2013</time>-->
+        <!--
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://xuechendi.github.io">Comments</a>
+        -->
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><em>After talking with a friend of mine who is really intelligent and awesome and intelligent, just thinking about to post this article to get through the Ceph OSD Write IO path. There I am sorry to say must exists some misunderstanding in this article, but I hope it will still means something for people who read this article&hellip;</em></p>
+
+<p><em>Ok, start here.</em></p>
+
+<p>======</p>
+
+<p>There is a IO path graph on ceph.com, pls click <code><a href="http://ceph.com/docs/master/dev/osd_internals/osd_throttles/?highlight=wbthrottle">OSD Internals</a></code>, I find the graph is a bit difficult to see, so redraw it in a vertical way</p>
+
+<div style="float:left;">
+<div style="float:left; width:58%;">
+    <div style="border-left:red solid 5px; padding-left:5%; ">
+    <p>**Pipe::Reader** call the function DispatchQueue::enqueue, put the msg into mqueue</p>
+    <p>**DispatchThread** loops in getting msg from mqueue and dispatch the msg to who is able to handle( msgr->ms_deliver_dispatch(m), in this case, OSD::ms_dispatch(m) will be called then )<p>
+    </div>
+    <br>
+    <div style="border-left:green solid 5px; padding-left:5%;">
+    <p>**OSD::_dispatch** switch (msg->type), in this case, would be &#8220;CEPH_MSG_OSD_OP&#8221;, call handle_op(op) </p>
+    <p>**handle_op** do some preparation before actually applying this op, includes refresh the map, check the obj name and data, remaining space, then it cal the pgid and lock the pg, call enqueue_op to put the op into osd->op_wq with pgid and op. </p>
+    <p>**worker wq** ThreadPool::worker loops all the time to join_old_threads, then dequeue any items in the workqueue, by now, that would be our write op. Then work_queue start to process this op request by OSD::OpWQ::_process function, then OSD::dequeue_op function, and do_request. After dequeue, the pg lock is then released.</p>
+    </div>
+</div>
+
+<img src="/images/ceph_write_path/io_path_1.png" style="margin-left:5%; width:35%; border:5px solid #222; float:left;">
+</div>
+
+
+<br>
+
+
+<div style="width:100%; float:left; border-left:#00FFFF solid 5px; padding-left:5%; font-size:10px;">
+    <p>**do_request** Seems it calls the do_request implemented in ReplicatedPG.cc, then calls do_op(op) also implemented in ReplicatedPG.cc.</p>
+    <p>**do_op** 
+</p>
+</div>
+
+
+<br>
+
+
+<br>
+
+
+<p>Below are the logs :</p>
+
+<p><div style="float:left; font-size:12px;  border: solid #999 1px; background-color: #eee; width:100%; overflow: scroll; padding:5px; white-space:nowrap;text-overflow:scroll;">
+<br>root@MPXDELL2:~# tail -f /var/log/ceph/osd.15.log  | grep &ldquo;dispatch\|queue_op\|<red>worker</red>&rdquo;
+<br>2013-12-18 19:42:51.999692 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x23d6000 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:51.999748 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9bc40 prio 63 cost 39 latency 0.000151 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:51.999814 7f2c8d76e700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:51.999824 7f2c8d76e700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bc40 prio 63 cost 39 latency 0.000228 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;732 (0&#8217;0,267&#8217;732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;732 active+clean]
+<br>2013-12-18 19:42:52.000519 7f2c8d76e700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bc40 finish
+<br>2013-12-18 19:42:52.000535 7f2c8d76e700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.001161 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x23d6480 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.001188 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9bb60 prio 63 cost 24 latency 0.000107 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.001213 7f2c8af69700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:52.001230 7f2c8af69700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bb60 prio 63 cost 24 latency 0.000148 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;732 (0&#8217;0,267&#8217;732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;732 active+clean]
+<br>2013-12-18 19:42:52.001615 7f2c8af69700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bb60 finish
+<br>2013-12-18 19:42:52.001627 7f2c8af69700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.002200 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x23d6240 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.002223 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9ba80 prio 63 cost 0 latency 0.000099 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.002275 7f2c8ff73700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:52.002293 7f2c8ff73700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9ba80 prio 63 cost 0 latency 0.000169 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;732 (0&#8217;0,267&#8217;732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;732 active+clean]
+<br>2013-12-18 19:42:52.002800 7f2c8ff73700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9ba80 finish
+<br>2013-12-18 19:42:52.002805 7f2c8ff73700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.004577 7f2ca26c5700 12 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ start processing 0x2aa1dd80 (1 active)
+<br>2013-12-18 19:42:52.005139 7f2ca26c5700 15 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ done processing 0x2aa1dd80 (0 active)
+<br>2013-12-18 19:42:52.005334 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x2ad1b480 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.005373 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9b9a0 prio 63 cost 111 latency 0.000124 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.005444 7f2c97f83700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:52.005454 7f2c97f83700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b9a0 prio 63 cost 111 latency 0.000205 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;733 (0&#8217;0,267&#8217;733] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;733 active+clean]
+<br>2013-12-18 19:42:52.006585 7f2c97f83700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b9a0 finish
+<br>2013-12-18 19:42:52.006601 7f2c97f83700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.010185 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x2ad1b240 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.010207 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9b8c0 prio 63 cost 0 latency 0.000168 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4
+<br>2013-12-18 19:42:52.010259 7f2c96780700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
+<br>2013-12-18 19:42:52.010269 7f2c96780700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b8c0 prio 63 cost 0 latency 0.000230 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;733 (0&#8217;0,267&#8217;733] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;733 active+clean]
+<br>2013-12-18 19:42:52.010692 7f2c96780700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b8c0 finish
+<br>2013-12-18 19:42:52.010696 7f2c96780700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
+<br>2013-12-18 19:42:52.011222 7f2ca1ec4700 12 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ start processing 0x2aa1dd80 (1 active)
+<br>2013-12-18 19:42:52.011701 7f2ca1ec4700 15 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ done processing 0x2aa1dd80 (0 active)
+<br>2013-12-18 19:42:56.918744 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x2ad94380 pg_stats_ack(1 pgs tid 18) v1
+</textarea></p>
+</div>
+
+
+</article>
+
+
+        <div class="sharing">
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+
+
+
+<section id="comments">
+    <div id="disqus_thread"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+
+    			</div>
+    			<footer id="footer">
+    				<p class="credit">
+  Copyright &copy; 2014 - Chendi.Xue. Powered by <a href="http://octopress.org">Octopress</a>
+</p>
+
+
+    			</footer>
+    			
+
+<script type="text/javascript">
+      var disqus_shortname = 'XueChendi';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://xuechendi.github.io/blog/2013/12/18/dive-into-ceph-write-io-path/';
+        var disqus_url = 'http://xuechendi.github.io/blog/2013/12/18/dive-into-ceph-write-io-path/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+
+
+
+<link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+
+
+
+
+    		</div>
+    	</section>
+  	</div>
+</body>
+</html>

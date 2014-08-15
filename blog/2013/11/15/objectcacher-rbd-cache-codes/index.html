@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>ObjectCacher: RBD Cache Codes - XueChendi</title>
+  <meta name="author" content="Chendi.Xue">
+
+  
+  <meta name="description" content="There is some cache mechanism in Ceph RBD.
+And it is now in memory cache which supports write through and write back. In this post, I would post what &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="XueChendi" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+
+<body>
+	<div class="container">
+		<aside class="left">
+			<div class="inner-left">
+				<header>
+					<img src="/xuechendi.jpg?s=200" alt="Gravatar of Chendi.Xue " title="Gravatar of Chendi.Xue" class="profilepic" />
+<hgroup>
+  <h1><a href="/">XueChendi</a></h1>
+  
+    <h2 class="subtitle">Keep Simple, Keep Effecient</h2>
+   
+</hgroup>
+
+
+				</header>
+				<footer>
+					<p>
+	<a href="https://facebook.com/xuechendi" class="btn btn-dark">Facebook</a>
+	<a href="http://cn.linkedin.com/pub/chendi-xue/5b/935/b36/" class="btn btn-dark">Linkedin</a>
+</p>
+
+				</footer>
+			</div>
+		</aside>
+    	<section class="right">
+    		<div class="inner-right">
+                        <nav role="navigation">
+                                <ul class="subscription" data-subscription="rss">
+  <li class="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:xuechendi.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/#posts">About Me</a></li>
+  <li><a href="/blog/2013/11/14/resume/">Resume</a></li>
+  <li><a href="/blog/archives">Blog</a></li>
+</ul>
+
+
+                        </nav>
+    			<div id="posts">
+    			  	<article class="post">
+    
+  <header>
+    
+      <h1 class="entry-title">ObjectCacher: RBD Cache Codes</h1>
+    
+    
+      <p class="meta">
+        <!--
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-11-15T00:58:00+08:00" pubdate data-updated="true">Nov 15<span>th</span>, 2013</time>-->
+        <!--
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://xuechendi.github.io">Comments</a>
+        -->
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>There is some cache mechanism in Ceph RBD.
+And it is now in memory cache which supports write through and write back.</p>
+
+<p>In this post, I would post what I have learnt from ObjectCacher codes.</p>
+
+<h2>How to deploy RBD Cache</h2>
+
+<p>there is a really clear instruction in ceph.com, just linked here <code><a href="http://ceph.com/docs/master/rbd/rbd-config-ref/?highlight=rbd%20cache">Ceph RBD Cache setting</a></code></p>
+
+<h2>How to record log from RBD</h2>
+
+<p>There is a little tricky to record log in RBD sides, because if you simply add the log settings in ceph.conf, you can only get logs when you do something using &ldquo;rbd&rdquo; command, (I just cannot remember what is the exact command, will add this later ), etc. So simply adding log settings in ceph.conf(client side) can not help you to get logs from QEMU to librbd, the reason is unknown to me, but I just find a way to walk around this.</p>
+
+<p>All you need to do is to add log setting in you instance.xml, then using libvirt to boot this instance or also you can just attach a new disk by using xml like below.</p>
+
+<figure class='code'><figcaption><span>disk.xml</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'><span class="nt">&lt;disk</span> <span class="na">type=</span><span class="s">&#39;network&#39;</span> <span class="na">device=</span><span class="s">&#39;disk&#39;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;driver</span> <span class="na">name=</span><span class="s">&#39;qemu&#39;</span> <span class="na">type=</span><span class="s">&#39;raw&#39;</span> <span class="na">cache=</span><span class="s">&#39;none&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol=</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_file=/tmp/qemu-rbd.log&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;target</span> <span class="na">dev=</span><span class="s">&#39;vdb&#39;</span> <span class="na">bus=</span><span class="s">&#39;virtio&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;serial&gt;</span>12f70341-d199-4fca-9270-56e5d6b80061<span class="nt">&lt;/serial&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;alias</span> <span class="na">name=</span><span class="s">&#39;virtio-disk1&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;address</span> <span class="na">type=</span><span class="s">&#39;pci&#39;</span> <span class="na">domain=</span><span class="s">&#39;0x0000&#39;</span> <span class="na">bus=</span><span class="s">&#39;0x00&#39;</span> <span class="na">slot=</span><span class="s">&#39;0x06&#39;</span> <span class="na">function=</span><span class="s">&#39;0x0&#39;</span><span class="nt">/&gt;</span>
+</span><span class='line'><span class="nt">&lt;/disk&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>After attach this disk, you can find logs in /tmp/qemu-rbd.log or you can just write to qemu log.</p>
+
+<figure class='code'><figcaption><span>write log to</span><a href='/var/libvirt/qemu/xxxxx(instance_name).log'>link</a></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='xml'><span class='line'>  <span class="nt">&lt;source</span> <span class="na">protocol=</span><span class="s">&#39;rbd&#39;</span> <span class="na">name=</span><span class="s">&#39;xcd_8osd/volume-3:debug_rbd=20:debug_objectcacher=20:log_to_stderr=true&#39;</span><span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is a really clear codes path we can find from logs, so just using log to debug or hack into the rbd codes.</p>
+
+<h2>Dig into the codes</h2>
+
+<p>If we enable rbd cache in ceph.conf(client side), the ObjectCacher object is created when this rbd image attach to the vm.
+Here is the overview.</p>
+
+<p><img src="/images/RBD_Cache/overview.png" width=60%></p>
+
+<p>From above we can see each RBD has a object to store all information name ImageCtx(image context), so there is only one ObjectCacher in one RBD cache and also different RBD images can not share their cache till now.</p>
+
+<p>ObjectCacher uses poolid, oid(objectid), then offset and length to index cache in memory.</p>
+
+<p>Then here is a graph to show how ceph using ObjectCacher.</p>
+
+<p><img src="/images/RBD_Cache/workflow_send_req.png" width=100%></p>
+
+<p><img src="/images/RBD_Cache/workflow_recv_req.png" width=50%></p>
+</div>
+
+
+</article>
+
+
+        <div class="sharing">
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+
+
+
+<section id="comments">
+    <div id="disqus_thread"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+
+    			</div>
+    			<footer id="footer">
+    				<p class="credit">
+  Copyright &copy; 2014 - Chendi.Xue. Powered by <a href="http://octopress.org">Octopress</a>
+</p>
+
+
+    			</footer>
+    			
+
+<script type="text/javascript">
+      var disqus_shortname = 'XueChendi';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes/';
+        var disqus_url = 'http://xuechendi.github.io/blog/2013/11/15/objectcacher-rbd-cache-codes/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+
+
+
+<link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+
+
+
+
+    		</div>
+    	</section>
+  	</div>
+</body>
+</html>

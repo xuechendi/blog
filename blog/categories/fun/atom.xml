@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: fun | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/fun/atom.xml" rel="self"/>
+  <link href="http://xuechendi.github.io/"/>
+  <updated>2014-08-15T06:16:21+08:00</updated>
+  <id>http://xuechendi.github.io/</id>
+  <author>
+    <name><![CDATA[Chendi.Xue]]></name>
+    <email><![CDATA[xuechendi@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[How much we can see from what we are listening]]></title>
+    <link href="http://xuechendi.github.io/blog/2014/04/23/how-much-we-can-see-from-what-we-arelistening/"/>
+    <updated>2014-04-23T13:01:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2014/04/23/how-much-we-can-see-from-what-we-arelistening</id>
+    <content type="html"><![CDATA[<p>Just write this post to see(literally see) how much differences there are in a compressed mp3 with lossless FLAC and WAV.</p>
+
+<p>I compared two sessions in TIME(from 《inception》 OST) with three compressed version:</p>
+
+<pre><code>44.1kHZ       MP3   184kbps
+44.1KHZ 16bit FLAC  608kbps VBR
+44.1kHZ 16bit WAV   1141kbps
+</code></pre>
+
+<p>First bite:
+mp3
+<img src="/images/mp3flacwav/session1_mp3.png" alt="session1_mp3" /></p>
+
+<p>flac
+<img src="/images/mp3flacwav/session1_flac.png" alt="session1_flac" /></p>
+
+<p>wav
+<img src="/images/mp3flacwav/session1_wav.png" alt="session1_wav" /></p>
+
+<p>Hum&hellip;I swear they are three different screen snapshot&hellip; But I did barely see no difference from those waves&hellip; Dead eyes&hellip;</p>
+
+<p>So, maybe I should find some session more dynamic, and I choose the the first rise in TIME, see below</p>
+
+<p>mp3
+<img src="/images/mp3flacwav/session2_mp3.png" alt="session2_mp3" /></p>
+
+<p>flac
+<img src="/images/mp3flacwav/session2_flac.png" alt="session2_flac" /></p>
+
+<p>wav
+<img src="/images/mp3flacwav/session2_wav.png" alt="session2_wav" /></p>
+
+<p>Er&hellip; still nothing? Look closer&hellip;</p>
+
+<p>mp3
+<img src="/images/mp3flacwav/session2_1_mp3.png" alt="session2_1_mp3" /></p>
+
+<p>flac
+<img src="/images/mp3flacwav/session2_1_flac.png" alt="session2_1_flac" /></p>
+
+<p>wav
+<img src="/images/mp3flacwav/session2_1_wav.png" alt="session2_1_wav" /></p>
+
+<p>put the waves together</p>
+
+<p>MP3 vs WAV: mp3(red line), wav(green line)
+<img src="/images/mp3flacwav/3.jpg" alt="mp3_wav" /></p>
+
+<p>FLAC vs WAV:flac(red line),wav(green line)
+<img src="/images/mp3flacwav/3.jpg" alt="flac_wav" /></p>
+
+<p>closer&hellip;
+300x MP3 vs WAV: mp3(red line), wav(green line)
+<img src="/images/mp3flacwav/4.jpg" alt="mp3_wav" /></p>
+
+<p>300x FLAC vs WAV:flac(red line),wav(green line)
+<img src="/images/mp3flacwav/5.jpg" alt="flac_wav" /></p>
+
+<p>Yes! There does have some differences between mp3 with wav!!!
+And it&rsquo;s so apparently mp3 lost some tops and bottoms&hellip;</p>
+
+<p>Seems I spend another 500% disk space for wav versions does worth something!!! Yep&hellip;</p>
+
+<p>But Flac is nearly 50% space occupation of WAV&hellip;
+Still feels like listening to WAV. Er&hellip;.</p>
+
+<p>Don&rsquo;t ask me if I can hear the difference between all these version&hellip; That&rsquo;s what I&rsquo;ll never tell&hellip; XOXO, geek girl</p>
+]]></content>
+  </entry>
+  
+</feed>

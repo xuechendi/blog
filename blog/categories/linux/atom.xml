@@ -1,0 +1,590 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Linux | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/linux/atom.xml" rel="self"/>
+  <link href="http://xuechendi.github.io/"/>
+  <updated>2014-08-15T06:16:21+08:00</updated>
+  <id>http://xuechendi.github.io/</id>
+  <author>
+    <name><![CDATA[Chendi.Xue]]></name>
+    <email><![CDATA[xuechendi@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[VM Creation by Virsh]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh/"/>
+    <updated>2013-12-12T14:34:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh</id>
+    <content type="html"><![CDATA[<h3>xml setting could be like below:</h3>
+
+<p>```xml libvirt.xml</p>
+
+<pre><code>&lt;domain type ="kvm"&gt;
+  &lt;uuid&gt;1b87fb8f-442c-4682-b693-b38612342cd1&lt;/uuid&gt;      // should be unique
+  &lt;name&gt;node3_1 &lt;/name&gt;
+  &lt;memory&gt;524288 &lt;/memory&gt;
+  &lt;vcpu&gt;1 &lt;/vcpu&gt;
+  &lt;cputune&gt;                                               // virsh vcpupin 
+    &lt;vcpupin vcpu='0' cpuset ='4'/&gt;
+  &lt;/cputune&gt;
+  &lt;os&gt;
+    &lt;type&gt;hvm &lt;/type&gt;
+    &lt;boot dev="hd" /&gt;
+  &lt;/os&gt;
+  &lt;features&gt;
+    &lt;acpi/&gt;
+  &lt;/features&gt;
+  &lt;clock offset="utc" &gt;
+    &lt;timer name="pit" tickpolicy ="delay"/&gt;
+    &lt;timer name="rtc" tickpolicy ="catchup"/&gt;
+  &lt;/clock&gt;
+  &lt;cpu mode="host-model" match="exact" /&gt;
+  &lt;devices&gt;                                           
+    &lt;disk type="file" device ="disk"&gt;                     // os disk
+      &lt;driver name ="qemu" type="raw" cache="none" /&gt;
+      &lt;source file ="/var/lib/instances/node3_1/instance.img" /&gt;
+      &lt;target bus ="virtio" dev="vda"/&gt;
+    &lt;/disk&gt;
+    &lt;hostdev mode='subsystem' type ='pci' managed='yes'&gt;  // nic setting
+      &lt;source&gt;
+        &lt;address domain ='0x0000' bus='0x04' slot='0x10' function ='0x0'/&gt;
+      &lt;/source&gt;
+      &lt;address type ='pci' domain='0x0000' bus='0x00' slot ='0x05' function='0x0' /&gt;
+    &lt;/hostdev&gt;
+    &lt;serial type="pty" /&gt;
+    &lt;input type="tablet" bus ="usb"/&gt;
+    &lt;graphics type="vnc" autoport ="yes" keymap="en-us" listen="0.0.0.0" /&gt;
+  &lt;/devices&gt;
+&lt;/domain&gt;
+</code></pre>
+
+<p>```</p>
+
+<h3>VM Creation by Virsh</h3>
+
+<ol>
+<li>make nic setting is right(SR-IOV, OpenVSwitch)</li>
+<li>BIOS enables VT</li>
+<li>virsh create libvirt.xml</li>
+<li>virsh attach-device domain disk.xml
+
+<blockquote><p>  Create your own rbd device(rbd info volume-name)
+  According to below xml , attach your device</p></blockquote></li>
+</ol>
+
+
+<h3>disk xml could be like below:</h3>
+
+<p>```xml disk.xml</p>
+
+<pre><code>&lt;disk type='network' device ='disk'&gt;
+  &lt;driver name ='qemu' type='raw' cache='none' /&gt;
+  &lt;source protocol ='rbd' name='xiaoxi/volume-79ee1e33-0353-4e22-bf98-d81a91b2c283:debug_rbd=1:debug_client=1:debug_objecter=1:debug_striper=1:log_to_stderr=true' /&gt;
+  &lt;target dev ='vdb' bus='virtio'/&gt;
+  &lt;serial&gt;79ee1e33-0353-4e22-bf98-d81a91b2c283&lt;/serial&gt;
+  &lt;alias name ='virtio-disk1'/&gt;
+  &lt;address type ='pci' domain='0x0000' bus='0x00' slot ='0x06' function='0x0' /&gt;
+&lt;/disk&gt;
+</code></pre>
+
+<p>```</p>
+
+<h3>Using bridge as network interface:</h3>
+
+<p>```bash /etc/network/interfaces</p>
+
+<h1>The primary network interface</h1>
+
+<p>auto br0
+iface br0 inet dhcp</p>
+
+<pre><code>    bridge_ports eth0
+    bridge_stp off
+    bridge_fd 0
+    bridge_maxwait 0
+</code></pre>
+
+<p>```
+<code>/etc/init.d/networking restart</code></p>
+
+<p>```xml libvirt.xml using bridge
+<domain type ="kvm">
+  <uuid>1b87fb8f-442c-4682-b693-b3866dc20cd3 </uuid>
+  <name>node2_1 </name>
+  <memory>524288 </memory>
+  <vcpu>1 </vcpu>
+  <cputune></p>
+
+<pre><code>&lt;vcpupin vcpu='0' cpuset ='2'/&gt;
+</code></pre>
+
+<p>  </cputune>
+  <os></p>
+
+<pre><code>&lt;type&gt;hvm &lt;/type&gt;
+&lt;boot dev="hd" /&gt;
+</code></pre>
+
+<p>  </os>
+  <features></p>
+
+<pre><code>&lt;acpi/&gt;
+</code></pre>
+
+<p>  </features>
+  <clock offset="utc" ></p>
+
+<pre><code>&lt;timer name="pit" tickpolicy ="delay"/&gt;
+&lt;timer name="rtc" tickpolicy ="catchup"/&gt;
+</code></pre>
+
+<p>  </clock>
+  <cpu mode="host-model" match="exact" />
+  <devices></p>
+
+<pre><code>&lt;disk type="file" device ="disk"&gt;
+  &lt;driver name ="qemu" type="raw" cache="none" /&gt;
+  &lt;source file ="/opt/instances/node2_1/instance.img" /&gt;
+  &lt;target bus ="virtio" dev="vda"/&gt;
+&lt;/disk&gt;
+ &lt;interface type='bridge' &gt;
+      &lt;source bridge ='br0'/&gt;
+      &lt;mac address ='00:11:22:33:44:55'/&gt;
+    &lt;/interface&gt;
+&lt;serial type="pty" /&gt;
+&lt;input type="tablet" bus ="usb"/&gt;
+&lt;graphics type="vnc" autoport ="yes" keymap="en-us" listen="0.0.0.0" /&gt;
+</code></pre>
+
+<p>  </devices>
+</domain>
+```</p>
+
+<h3>extra setting to apparmor:</h3>
+
+<p><code>console
+root@CephXCD1:~# tail -3 /etc/apparmor.d/abstractions/libvirt-qemu
+  # for rbd
+  /etc/ceph/ceph.conf r,
+  /usr/local/lib/* rmix,
+root@CephXCD1:~# service apparmor restart
+Setting vncserver &amp; vncviewer:
+</code></p>
+
+<h3>install vncserver in your hyperviser</h3>
+
+<p>```console
+root@CephXCD1:~# apt-get install vnc4server
+root@CephXCD1:~# adduser vnc
+root@CephXCD1:~# /etc/init.d/vncserver</p>
+
+<h1>!/bin/bash</h1>
+
+<p>PATH=&ldquo;$PATH:/usr/bin/&rdquo;
+export USER= &ldquo;vnc&rdquo;
+DISPLAY=&ldquo;1&rdquo;
+DEPTH=&ldquo;16&rdquo;
+GEOMETRY=&ldquo;1024x768&rdquo;
+OPTIONS=&ldquo;-depth ${DEPTH} -geometry ${GEOMETRY} :${DISPLAY}&rdquo;
+. / lib/lsb /init-functions
+case &ldquo;$1&rdquo; in
+start)
+log_action_begin_msg &ldquo;Starting vncserver for user &lsquo;${USER}&rsquo; on localhost:${DISPLAY}&rdquo;
+su ${USER} -c &ldquo;/usr/bin/vncserver ${OPTIONS}&rdquo;
+;;
+stop)
+log_action_begin_msg &ldquo;Stoping vncserver for user &lsquo;${USER}&rsquo; on localhost:${DISPLAY}&rdquo;
+su ${USER} -c &ldquo;/usr/bin/vncserver -kill :${DISPLAY}&rdquo;
+;;
+restart)
+$0 stop
+$0 start
+;;
+esac
+exit 0
+root@CephXCD1:~# chmod +x vncserver
+root@CephXCD1:~# service vncserver start
+```</p>
+
+<h3>configure the client</h3>
+
+<p>install vnc viewer in a computer with 图形界面, like windows</p>
+
+<p><img src="/images/vm_creation_by_virsh/vncviewer.png" alt="vncviewer" />
+<img src="/images/vm_creation_by_virsh/vncviewer2.png" alt="vncviewer" /></p>
+
+<p>with best luck, you will enter the VM</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[My Understanding of High Availability]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/09/high-avalability-report/"/>
+    <updated>2013-12-09T10:20:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/09/high-avalability-report</id>
+    <content type="html"><![CDATA[<blockquote><p>Get known of HA, that&rsquo;s what I was been requested week ago, and I just thought what I need to do is knowing how to use something called heartbeat and pacemaker, maybe knowing the protocol and model underneath these two projects. Then you definitely get what happened, so many nouns pop out, &ldquo;corosync&rdquo;, &ldquo;CMAN&rdquo;, &ldquo;OpenAIS&rdquo;, &ldquo;rgmanager&rdquo;, and protocols like &ldquo;SRP&rdquo;, &ldquo;RRP&rdquo;, &ldquo;quiescent algorithms&rdquo;, &ldquo;termination detection algorithms&rdquo;, etc.</p>
+
+<p>I <em>TRIED REALLY HARD</em> here to figure out the relationship among all these nouns, and what gives me a relief is that I just found this posting in <a href="http://schlutech.com/2011/07/demystifying-high-availability-linux-clustering-technologies/" target="_blank" ><code>which</code> some guy gets my feeling </a>. ^_^ , Just dig dig dig&hellip;</p>
+
+<p>I put everything in the way I thought will be much clear <code>below in the SLIDES</code>, and will update in following days</p></blockquote>
+
+<p>For Chinese version, please download the slides <code><a href="/downloads/HA-CN-report-XCD.pdf">here</a></code></p>
+
+<p><embed src='/slides/get-known-of-ha' allowFullScreen='true' width='100%' height='800' align='middle'></embed></p>
+
+<h2>Referrence</h2>
+
+
+<h6><a href="http://upcommons.upc.edu/pfc/bitstream/2099.1/4970/1/memoria.pdf" target="_blank">1. MASTER THESIS of Abraham Iglesias Aparicio</a></h6>
+
+
+<h6><a href="http://www.linux-ha.org/wiki/Documentation" target="_blank">2. The Linux-HA project: Heartbeat</a></h6>
+
+
+<h6><a href="http://hi.baidu.com/leolance/item/26e1943543e873342e0f8142" target="_blank">3. http://hi.baidu.com/leolance/item/26e1943543e873342e0f8142</a></h6>
+
+
+<h6><a href="http://www.ultramonkey.org/3/linux-ha.html" target="_blank">4. http://www.ultramonkey.org/3/linux-ha.html</a></h6>
+
+
+<h6><a href="http://doc.opensuse.org/products/draft/SLE-HA/SLE-ha-guide_sd_draft/book.sleha.html" target="_blank">5. SUSE Linux Enterprise High Availability Extension High Availability Guide</a></h6>
+
+
+<h6><a href="http://linux-ha.org/_cache/TechnicalPapers__UKUUG-WinterConf-2004-SCRAT-Paper.pdf" target="_blank">6. 《A new Cluster Resource Manager for heartbeat》Writen by SUSE</a></h6>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[My Understanding of High Availability]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/09/heartbeat-and-drbd-internal/"/>
+    <updated>2013-12-09T10:20:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/09/heartbeat-and-drbd-internal</id>
+    <content type="html"><![CDATA[<blockquote><p>Get known of HA, that&rsquo;s what I was been requested week ago, and I just thought what I need to do is knowing how to use something called heartbeat and pacemaker, maybe knowing the protocol and model underneath these two projects. Then you definitely get what happened, so many nouns pop out, &ldquo;corosync&rdquo;, &ldquo;CMAN&rdquo;, &ldquo;OpenAIS&rdquo;, &ldquo;rgmanager&rdquo;, and protocols like &ldquo;SRP&rdquo;, &ldquo;RRP&rdquo;, &ldquo;quiescent algorithms&rdquo;, &ldquo;termination detection algorithms&rdquo;, etc.</p>
+
+<p>I <em>TRIED REALLY HARD</em> here to figure out the relationship among all these nouns, and what gives me a relief is that I just found this posting in <a href="http://schlutech.com/2011/07/demystifying-high-availability-linux-clustering-technologies/" target="_blank" ><code>which</code> some guy gets my feeling </a>. ^_^ , Just dig dig dig&hellip;</p>
+
+<p>I put everything in the way I thought will be much clear <code>below in the SLIDES</code>, and will update in following days</p></blockquote>
+
+<p><embed src='/slides/get-known-of-ha' allowFullScreen='true' width='100%' height='800' align='middle'></embed></p>
+
+<h2>Referrence</h2>
+
+
+<h6><a href="http://upcommons.upc.edu/pfc/bitstream/2099.1/4970/1/memoria.pdf" target="_blank">1. MASTER THESIS of Abraham Iglesias Aparicio</a></h6>
+
+
+<h6><a href="http://www.linux-ha.org/wiki/Documentation" target="_blank">2. The Linux-HA project: Heartbeat</a></h6>
+
+
+<h6><a href="http://hi.baidu.com/leolance/item/26e1943543e873342e0f8142" target="_blank">3. http://hi.baidu.com/leolance/item/26e1943543e873342e0f8142</a></h6>
+
+
+<h6><a href="http://www.ultramonkey.org/3/linux-ha.html" target="_blank">4. http://www.ultramonkey.org/3/linux-ha.html</a></h6>
+
+
+<h6><a href="http://doc.opensuse.org/products/draft/SLE-HA/SLE-ha-guide_sd_draft/book.sleha.html" target="_blank">5. SUSE Linux Enterprise High Availability Extension High Availability Guide</a></h6>
+
+
+<h6><a href="http://linux-ha.org/_cache/TechnicalPapers__UKUUG-WinterConf-2004-SCRAT-Paper.pdf" target="_blank">6. 《A new Cluster Resource Manager for heartbeat》Writen by SUSE</a></h6>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[DRBD and Heartbeat]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/12/04/drbd-and-heartbeat/"/>
+    <updated>2013-12-04T19:07:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/12/04/drbd-and-heartbeat</id>
+    <content type="html"><![CDATA[<p>These days, need to deploy a HA solution in our setup, and just write all these down helping the next time deployment.</p>
+
+<h2>The Overview</h2>
+
+<p><img src="/images/HA/IMG_0045.PNG" alt="overview" width=80%></p>
+
+<p>Here we have 2 setups, providing both web service for management and iscsi target service.</p>
+
+<p>What we wanna have is all the LVs in setup1(222.31.76.144) has a mirror in setup2(222.31.76.228) &mdash; so we need DRBD</p>
+
+<p>Then we use LV1 as lun0 to provide iscsi disk to client1, all client1 knows is that his iscsi target provider&rsquo;s ip address is 222.31.76.250(may be setup1 or setup2) &mdash; so we need heartbeat.</p>
+
+<p>Basically, setup1 will response to the client&rsquo;s request, only when setup&rsquo;s eth0 nic doesn&rsquo;t work(this will happen when setup1 is down), setup2 will continue to provide web service and iscsi service.</p>
+
+<p>Ok, another problem, when we need setup2 can continue to provide iscsi service, we need disks in setup to can also be the primary node in drbd semantic, so when data written to setup2, data can be sync to setup1.</p>
+
+<p>Let&rsquo;s just summary all the requirement here:</p>
+
+<ol>
+<li><p>Using heartbeat to provide a virtual ip 222.31.76.250 and watch the liveness of both setups.</p></li>
+<li><p>Using DRBD to sync LVs in setup1 and setup2, the syncronization can be both sides(dual primary).</p></li>
+<li><p>Need to keep in mind, when the sync link(eth0,192.168.1.*) breaks, there will be a split brain situation in our DRBD setting, so we need to record who is the latest iscsi target provider and use that one to recover the DRBD setting.</p></li>
+</ol>
+
+
+<h2>DRBD setting</h2>
+
+<p>1.The installation
+we need to install two parts of DRBD, the kmod who is the real implementation of drbd, and the drbdadm, which helps a lot to manage the drbd service.</p>
+
+<p><code>bash drbd rpm
+drbd83-8.3.15-2.el5.centos.x86_64.rpm       kmod-drbd83-8.3.15-3.el5.centos.x86_64.rpm
+</code></p>
+
+<p>2.The drbd config file
+We can start from the drbd conf file /etc/drbd.conf</p>
+
+<p>``` bash /etc/drbd.conf
+#</p>
+
+<h1>please have a a look at the example configuration file in</h1>
+
+<h1>/usr/share/doc/drbd83/drbd.conf</h1>
+
+<p>#
+include &ldquo;drbd.d/global_common.conf&rdquo;;
+include &ldquo;drbd.d/*.res&rdquo;;
+```</p>
+
+<p>As we can see, in this config file,it include a global_common.conf and *.res
+The first one writes some common setting for drbd, things like the sync protocol(Async, semi-sync, sync), net rate setting, blah, blah&hellip;
+The second one is what we need to build our resource, the config will be like below:</p>
+
+<p>``` bash mpx.res
+resource mpx {</p>
+
+<pre><code>protocol C; 
+net {
+    allow-two-primaries; 
+  }
+syncer {
+      rate 1024M;  //sync bandwidth
+ }
+on super {
+    device /dev/drbd0;
+    disk /dev/raid0/lv01;
+    address 192.168.1.100:7789;
+    meta-disk internal;        
+}
+on MPXHA {
+    device /dev/drbd0;
+    disk /dev/vg01/lv01;
+    address 192.168.1.152:7789;
+    meta-disk internal;        
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>The protocol part says we will use sync method in this resource
+The net part says both nodes can be primary
+The last two parts describe the drbd device and the nic they used to sync data(Here we can direclty connect two setup by ethernet line.)</p>
+
+<p>The above *.res should has replication both in setup1 and setup2
+After that there is few command we need to first time build this DRBD resource.</p>
+
+<p>``` bash first building drbd resource
+drbdadm create-md mpx // this should be done both in setup1 and setup2
+service drbd restart // both in setup1 and setup2</p>
+
+<p>drbdadm primary &mdash;force resource // only in setup1</p>
+
+<p>drbd-overview // can be done both in setup1 or setup2, here I did in setup2
+drbd driver loaded OK; device status:
+version: 8.3.11 (api:88/proto:86-96)
+srcversion: 2D876214BAAD53B31ADC1D6
+m:res  cs          ro                 ds
+0:mpx  SyncTarget  Secondary/Primary  Inconsistent/UpToDate  C
+&hellip;    sync'ed:    25.4%              (1373576/1837720)K</p>
+
+<p>&hellip; wait until</p>
+
+<p>drbd driver loaded OK; device status:
+version: 8.3.11 (api:88/proto:86-96)
+srcversion: 2D876214BAAD53B31ADC1D6
+m:res  cs         ro                 ds                 p  mounted  fstype
+0:mpx  Connected  Secondary/Primary  UpToDate/UpToDate  C</p>
+
+<p>drbdadm primary mpx // in setup2
+drbd-overview
+drbd driver loaded OK; device status:
+version: 8.3.11 (api:88/proto:86-96)
+srcversion: 2D876214BAAD53B31ADC1D6
+m:res  cs         ro               ds
+0:mpx  Connected  Primary/Primary  UpToDate/UpToDate  C
+```</p>
+
+<p>Here is when we use drbd sevice as iscsi lun,yeah, you need this copy both in setup1 and setup2</p>
+
+<p>``` bash scst.conf</p>
+
+<h1>Automatically generated by SCST Configurator v2.2.0.</h1>
+
+<p>HANDLER vdisk_fileio {</p>
+
+<pre><code>DEVICE vg01_lv01 {
+    filename /dev/drbd0 // ￼ drbd 
+}
+</code></pre>
+
+<p>}
+TARGET_DRIVER iscsi {</p>
+
+<pre><code>enabled 1
+TARGET iqn.2011-1212.edu.cuc.storagelab:mpx.target1 {
+    cpu_mask 0000ff
+    enabled 1
+    rel_tgt_id 1
+    GROUP xcd {
+        LUN 0 vg01_lv01
+        INITIATOR iqn.2012-12.cn.edu.cuc.xcd:1234567
+        INITIATOR iqn.1991-05.com.microsoft:win-p56rroe0srf
+        cpu_mask 0000ff
+    }
+} 
+</code></pre>
+
+<p>}
+```</p>
+
+<h2>Heartbeat setting</h2>
+
+<ol>
+<li>The installation
+Seems we can not simply get heartbeat in yum
+Here is the solution</li>
+</ol>
+
+
+<p>``` console heartbeat installation
+Step-1 : Make download folder under the root.
+[root@setup1 download]# mkdir /download
+[root@setup1 download]# cd /download/
+Step-2 : Download EPEL repository.
+[root@setup1 download]# wget <a href="ftp://mirror.switch.ch/pool/1/mirror/scientificlinux/6rolling/i386/os/Packages/epel-release-6-5.noarch.rpm">ftp://mirror.switch.ch/pool/1/mirror/scientificlinux/6rolling/i386/os/Packages/epel-release-6-5.noarch.rpm</a>
+Step-3 : Install Epel RPM.
+rpm -ivUh epel-release-6-5.noarch.rpm
+warning: epel-release-6-5.noarch.rpm: Header V4 DSA/SHA1 Signature, key ID 192a7d7d: NOKEY
+Preparing&hellip;                ########################################### [100%]
+   1:epel-release           ########################################### [100%]
+Step-4 : Edit epel.repo file ‘/etc/yum.repos.d/epel.repo’ change the line # 6 ‘enable=1 to enable=0′.
+[root@setup1 download]# vi /etc/yum.repos.d/epel.repo
+[epel]
+name=Extra Packages for Enterprise Linux 6 &ndash; $basearch</p>
+
+<h1>baseurl=<a href="http://download.fedoraproject.org/pub/epel/6/$basearch">http://download.fedoraproject.org/pub/epel/6/$basearch</a></h1>
+
+<p>mirrorlist=<a href="http://mirrors.fedoraproject.org/metalink?repo=epel-6&amp;amp;arch=$basearch">http://mirrors.fedoraproject.org/metalink?repo=epel-6&amp;amp;arch=$basearch</a>
+failovermethod=priority
+enabled=0
+CentOS 6 :<br/>
+Step-5 : Now we are ready to install Heartbeat with yum command.
+[root@setup1 download]# yum &mdash;enablerepo=epel install heartbeat
+```</p>
+
+<ol>
+<li>The setting</li>
+</ol>
+
+
+<p><code>console
+[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/ha.cf /etc/ha.d/
+[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/haresources /etc/ha.d/
+[root@setup1&amp;setup2 download]# cp /usr/share/doc/heartbeat-3.0.4/authkeys /etc/ha.d/
+[root@setup1 download]# vim /etc/ha.d/ha.cf
+debugfile /var/log/ha-debug
+keepalive 2
+deadtime 10
+warntime 6
+initdead 120
+udpport 694
+ucast eth0 222.31.76.228
+node   super
+node   MPXHA
+auto_failback on
+respawn hacluster /usr/lib64/heartbeat/ipfail
+[root@setup2 download]# vim /etc/ha.d/ha.cf
+debugfile /var/log/ha-debug
+keepalive 2
+deadtime 10
+warntime 6
+initdead 120
+udpport 694
+ucast eth0 222.31.76.144
+node   super
+node   MPXHA
+auto_failback on
+respawn hacluster /usr/lib64/heartbeat/ipfail
+[root@setup1&amp;setup2 download]# vim /etc/ha.d/haresouces
+super IPaddr::222.31.76.250/24/eth0
+[root@setup1&amp;setup2 download]# service heartbeat restart
+</code></p>
+
+<h2>There is also one problem we mentioned before called &ldquo;split brain&rdquo;, here is the way to solve this situation</h2>
+
+<p>This situation happens when the eth0(the link used to sync data beween drbd resources are broken), and both drbd will see itself as primary and the other as unknown</p>
+
+<p><code>console when split brain happens
+[root@super ~]# service drbd status
+drbd driver loaded OK; device status:
+version: 8.3.11 (api:88/proto:86-96)
+srcversion: 2D876214BAAD53B31ADC1D6
+m:res  cs          ro               ds                 p       mounted  fstype
+0:mpx  StandAlone  Primary/Unknown  UpToDate/DUnknown  r-----
+</code></p>
+
+<p>The way to tackle this problem when both drbd device also act as the iscsi lun</p>
+
+<p>```console How to solve split brain problem
+service scst stop
+drbdadm secondary mpx
+drbdadm disconnect mpx
+drbdadm &mdash; &mdash;discard-my-data connect mpx
+ssh 222.31.76.144 &ldquo;drbdadm connect mpx&rdquo;</p>
+
+<p>service drbd status</p>
+
+<p>drbd driver loaded OK; device status:
+version: 8.3.11 (api:88/proto:86-96)
+srcversion: 2D876214BAAD53B31ADC1D6
+m:res  cs          ro                 ds
+0:mpx  SyncTarget  Secondary/Primary  Inconsistent/UpToDate  C
+&hellip;    sync'ed:    25.4%              (1373576/1837720)K</p>
+
+<p>drbd driver loaded OK; device status:
+version: 8.3.11 (api:88/proto:86-96)
+srcversion: 2D876214BAAD53B31ADC1D6
+m:res  cs         ro                 ds                 p  mounted  fstype
+0:mpx  Connected  Secondary/Primary  UpToDate/UpToDate  C</p>
+
+<p>drbdadm primary mpx</p>
+
+<p>drbd driver loaded OK; device status:
+version: 8.3.11 (api:88/proto:86-96)
+srcversion: 2D876214BAAD53B31ADC1D6
+m:res  cs         ro               ds
+0:mpx  Connected  Primary/Primary  UpToDate/UpToDate  C</p>
+
+<p>service scst start
+```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[System analysis and tools]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/system-analysis-and-tools/"/>
+    <updated>2013-11-15T01:09:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/system-analysis-and-tools</id>
+    <content type="html"><![CDATA[<h2>It&rsquo;s really clear of these 2 graphs to remind me all those tools can help to analyse the system</h2>
+
+<h2>So happily sharing here ~~~</h2>
+
+<p><img src="/images/system_analysis_tools/overview.jpg" alt="overview" />
+<img src="/images/system_analysis_tools/tools.jpg" alt="overview" /></p>
+]]></content>
+  </entry>
+  
+</feed>

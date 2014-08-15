@@ -1,0 +1,257 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>AIO-STRESS vs. FIO - XueChendi</title>
+  <meta name="author" content="Chendi.Xue">
+
+  
+  <meta name="description" content="There is no big gap to me in producing workload by AIO-STREE and FIO. Just because I haven&rsquo;t using much more advanced feature in FIO like &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="XueChendi" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+
+<body>
+	<div class="container">
+		<aside class="left">
+			<div class="inner-left">
+				<header>
+					<img src="/xuechendi.jpg?s=200" alt="Gravatar of Chendi.Xue " title="Gravatar of Chendi.Xue" class="profilepic" />
+<hgroup>
+  <h1><a href="/">XueChendi</a></h1>
+  
+    <h2 class="subtitle">Keep Simple, Keep Effecient</h2>
+   
+</hgroup>
+
+
+				</header>
+				<footer>
+					<p>
+	<a href="https://facebook.com/xuechendi" class="btn btn-dark">Facebook</a>
+	<a href="http://cn.linkedin.com/pub/chendi-xue/5b/935/b36/" class="btn btn-dark">Linkedin</a>
+</p>
+
+				</footer>
+			</div>
+		</aside>
+    	<section class="right">
+    		<div class="inner-right">
+                        <nav role="navigation">
+                                <ul class="subscription" data-subscription="rss">
+  <li class="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:xuechendi.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/#posts">About Me</a></li>
+  <li><a href="/blog/2013/11/14/resume/">Resume</a></li>
+  <li><a href="/blog/archives">Blog</a></li>
+</ul>
+
+
+                        </nav>
+    			<div id="posts">
+    			  	<article class="post">
+    
+  <header>
+    
+      <h1 class="entry-title">AIO-STRESS vs. FIO</h1>
+    
+    
+      <p class="meta">
+        <!--
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-11-15T01:05:00+08:00" pubdate data-updated="true">Nov 15<span>th</span>, 2013</time>-->
+        <!--
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://xuechendi.github.io">Comments</a>
+        -->
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>There is no big gap to me in producing workload by AIO-STREE and FIO.</p>
+
+<p>Just because I haven&rsquo;t using much more advanced feature in FIO like replay trace, and I just using libaio as the driver.</p>
+
+<p>But here, I just wanna show some interesting test to see some behavior by different setting of io_depth and io_batch. And <code>sadly</code> that is just some wrong setting I did before and produced some strange data then I just realized how these settings mean. T_T</p>
+
+<h2>Just follow my lead to see how I found this wrong setting. ^_^</h2>
+
+<p><img src="/images/AIO_vs_FIO/1.png" alt="findings" /></p>
+
+<p>After a loadline test of io_depth setting, I just found the figures followed some rules, so using qemu logs, I draw above graph. This is a graph recording the io request intervals sending from qemu to librbd, and catched in librbd logs.</p>
+
+<p>As we can see, when we set the queue_depth as 8, the first io request has quite small interval(0.075ms), but the interval between the 8th and 9th io request is pretty long(1.6ms). And if we set the queue_depth as 16, or 32. The burst interval happened just between the 16th to 17th, and 32th to 33th respectively.</p>
+
+<p>So there comes the deduction:
+Queue will send out all requests, then wait the last request completes . After that it starts to send out new queue.</p>
+
+<h2>How to prove it?</h2>
+
+<h3>Methodology:</h3>
+
+<ol>
+<li>. Set queue depth = 64</li>
+<li>. make the 42th request sleep 3s in completion thread</li>
+</ol>
+
+
+<h3>&mdash;> If RBD waits 3s then receives the 65th requests, we can confirm the deduction.</h3>
+
+<h3>How to do this?</h3>
+
+<p>There is a function in librbd named C_AioRead::finish in AioCompletion.cc, so what we need to do is just randomly block this function for 3s, and see what happens.</p>
+
+<p><img src="/images/AIO_vs_FIO/2.png" alt="proving" /></p>
+
+<p>Aha! The results just show as what we expect.</p>
+
+<h3>But there are still 3 possibilities can produce result like this.</h3>
+
+<p>1.Wrong workload setting?
+2.Ceph RBD design ?  if there is some lock in finish thread that blocks the submit thread
+3.Virtio ?</p>
+
+<p>The situation produced by FIO</p>
+
+<p><img src="/images/AIO_vs_FIO/3.png" alt="proving" /></p>
+
+<p>From this graph, we can see the result is really different by using aio-stress, which can help us to exclude last two possibilities. That means we must do some wrong setting in aio-stress or aio-stress just have some wierd strategy design.</p>
+
+<p>Also we can see the difference in logs.</p>
+
+<p><img src="/images/AIO_vs_FIO/4.png" alt="proving" /></p>
+
+<p><code>Here I will add some aio-stress codes digging into soon, just not now~ Sorry</code></p>
+
+<hr>
+
+
+<p>The right setting for random io in aio-stress to act more meet our demand (Here I said random io is because this setting may result in no io merge in sequential io)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">./aio-stress -O -o 3 -i 1 -d 64 -r4k -s 4m /dev/vdb</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img src="/images/AIO_vs_FIO/5.png" alt="proving" /></p>
+
+<p><img src="/images/AIO_vs_FIO/6.png" alt="proving" /></p>
+</div>
+
+
+</article>
+
+
+        <div class="sharing">
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+
+
+
+<section id="comments">
+    <div id="disqus_thread"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+
+    			</div>
+    			<footer id="footer">
+    				<p class="credit">
+  Copyright &copy; 2014 - Chendi.Xue. Powered by <a href="http://octopress.org">Octopress</a>
+</p>
+
+
+    			</footer>
+    			
+
+<script type="text/javascript">
+      var disqus_shortname = 'XueChendi';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio/';
+        var disqus_url = 'http://xuechendi.github.io/blog/2013/11/15/aio-stress-vs-fio/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+
+
+
+<link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+
+
+
+
+    		</div>
+    	</section>
+  	</div>
+</body>
+</html>

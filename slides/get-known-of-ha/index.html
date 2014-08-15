@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+		<title>get known of HA - XueChendi</title>
+		<meta name="author" content="Chendi.Xue">
+
+	  
+	  <meta name="description" content="tags:HA, Heartbeat, corosync, pacemaker High Availability Overview The whole HA idea can be divided into 3 parts: 1. The Messaging & Membership: &hellip;">
+	  
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<link rel="stylesheet" href="/stylesheets/reveal/reveal.min.css">
+		<link rel="stylesheet" href="/stylesheets/reveal/theme/beige.css" id="theme">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="/stylesheets/reveal/zenburn.css">
+
+		<!-- If the query includes 'print-pdf', use the PDF print sheet -->
+		<script>
+			document.write( '<link rel="stylesheet" href="/stylesheets/reveal/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="/javascripts/reveal/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<div class="reveal">
+    <div class="slides">
+        <section>
+        <h4>tags:HA, Heartbeat, corosync, pacemaker</h4>
+        <br>
+        <h1>High Availability</h1>
+    </section>
+    <section>
+        <h2>Overview</h2>
+        <img alt="HA overview" src="/images/HA/ha_overview.png">
+        <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            <p>The whole HA idea can be divided into 3 parts:</p>
+            <p>1. The Messaging & Membership: heartbeat protocol and ClusterConsensusManager(CCM), get informed of the cluster members&#8217; joining and leaving the system.</p>
+            <p>2. ResourceAgent and LocalResourceManager(LRM), define a set of scripts to start, stop and operate, and called by the LRM.</p>
+            <p>3. ClusterResourceManager, consists of ClusterInformationBase(CIB),ClusterResourceManagerDaemon (CRMD),Designated Coordinator(DC), PolicyEngine(PE), Transitioner, collects information about the cluster, compute the actions to make each/part of  nodes in the cluster to achieve target states and passing them to either the LRMd (Local Resource Management daemon) or CRMd peers on other nodes via the cluster messaging infrastructure.</p>
+        </div>
+    </section>
+        <section>
+        <h2>Components</h2>
+        <img alt="HA components" src="/images/HA/ha_internals.png">
+        <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            <p>This is a components graph like we described in last slide, and here we also should mention is that:</p>
+            <p>Since &#8220;Heartbeat&#8221; project is now in its third virsion and pacemaker is now being an independent project mainly responsible for the CRM part.</p>
+            <p>Heartbeat itself is now more controlling the messaging & membership part, and another project named corosync is also a strong candidate to do the messaging and membership work. </p>
+            <p>So in this graph, there are three independent projects in different color respectively.</p>
+        </div>      
+    </section>
+    <section>
+        <h2>Difference between Heartbeat and Corosync</h2>
+        <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            <p></p>
+        </div>
+    </section>
+    <section>
+        <section>
+            <h2>Heartbeat</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            <p>A heartbeat is a message sent between machines at a regular interval of the order of seconds. </p>
+            <p>If a heartbeat isn&#8217;t received for a time &#8211; usually a few heartbeat intervals &#8211; the machine that should have sent the heartbeat is assumed to have failed. </p>
+            <p>A heartbeat protocol is generally used to negotiate and monitor the availability of a resource, such as a floating IP address. Typically when a heartbeat starts on a machine it will perform an election process with other machines on the heartbeat network to determine which, if any machine owns the resource. On heartbeat networks of more than two machines it is important to take into account partitioning, where two halves of the network could be functioning but not able to communicate with each other. In a situation such as this it is important that the resource is only owned by one machine, not one machine in each partition. </p>
+            <br>
+            <p>As a heartbeat is intended to be used to indicate the health of a machine it is important that the heartbeat protocol and the transport that it runs on is as reliable as possible. Effecting a fail-over because of a false alarm may, depending on the resource, be highly undesirable. </p>
+            <p>It is also important to react quickly to an actual failure, so again it is important that the heartbeat is reliable. For this reason it is often desirable to have heartbeat running over more than one transport, for instance an ethernet segment using UDP/IP, and a serial link. </p>
+            <p>Tips: ipfail, ldirector, ip address takeover(gratutious arp)</p>
+            </div>
+            <h2><a href="#" class="navigate-down enabled" >(press DOWN)</a></h2>
+        </section>
+        <section>
+            <h2>Heartbeat Processes</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>There is 4 kinds of process in Heartbeat deamon, so heartbeat can communicate the states info among heartbeat nodes in right sequence. </p>
+                <p>There can be more than one pair of read and write child process in Heartbeat deamon to watch all of the communication channels.</p>
+            </div>
+            <p>Master Process, FIFO child, read child, write child. </p>
+            <img alt="heartbeat ps" src="/images/HA/heartbeat_ps.png">
+        </section>
+        <section>
+            <h2>Heartbeat Protocol</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>There is two types of Heartbeat: 环形心跳, 广播心跳（Need to find a paper/webpage something to describe this）</p>
+                <p>Two kinds of heartbeat checks: pull heartbeat check request then response, and push I am alive message to other nodes.</p>
+                <p>Two kinds of communication unites: One used to check the aliveness of nodes, one to manage the resources.(Later moved into pacemaker project?)</p>
+                <p>Timeout and retransmission mechanism</p>
+            </div>
+            <h6>The communication unit fetched by Wireshark:</h6>
+            <img alt="heartbeat units" src="/images/HA/heartbeat_units.png">
+            <p><b>Reference: </b><a href="/images/HA/Accelerated_Heartbeat_Protocols.pdf " target="_blank">paper talks about 《A family of Heartbeat Protocols》</a></p>
+        </section>
+        <section>
+            <h2>ipfail</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left; float:left;">   
+                <p style="font-wight:900; font-size:20px;">Heartbeat is also able to use qourum devices to help determine which nodes should be active,this is done using the ipfail plugin.</p>
+                <p style="font-wight:900; font-size:20px;">Below is the link to show the difference between with/without ipfail.(The graph is focus on a <a href="http://www.ultramonkey.org/3/lvs.html#linux-director" target="_blank">linux director service</a> HA)</p>
+                <p>In some situation like below, if a pair of hosts have physical links on the internal and external network, it may be desirable for fail-over to occur if <code>either</code> physical link fails. </p>
+                <img alt="without_ipfail" src="/images/HA/without_ipfail.png" style="width:45%">
+                <img alt="with_ipfail" src="/images/HA/with_ipfail.png" style="width:45%">
+                <p>The <a href="http://www.ultramonkey.org/3/ipfail.html" target="_blank">ipfail</a> plugin for heartbeat makes this possible by monitoring one or more external hosts known as a ping node. Typically this would be a router or switch on the local network. The ping node is treated as a quorum device. connectivity to a qourum device is lost, then heartbeat&#8217;s resource manager may triger a failover. In the simple case, if an interface fails on the active linux director, then one of the ping nodes should become unavailable and fail-over will occur.</p>
+            </div>
+        </section>
+        <section>
+            <h2>Heartbeat Virtual IP</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>When heartbeat is configured, a master node is selected.</p> 
+                <p>When heartbeat starts up this node sets up an interface for a virtual IP address, that will be accessed by external end users. Normally, there will be an interface with the Virtual IP on the master host. </p>
+                <p>If this node fails then another node in the heartbeat cluster will start up an interface for this IP address and use <a href="#" class="navigate-down enabled" >gratuitous ARP</a> to ensure that all traffic bound for this address is received by this machine. This is most conveniently done by adding the virtual IP address an existing interface, or a dedicated interface may also be used. Once the address has been added, the hot stand-by is able to accept traffic, and answer ARP requests for the virtual IP address. </p>
+                <p>This method of fail-over is called <a href="http://www.ultramonkey.org/3/ip_address_takeover.html" target="_blank">IP Address Takeover</a>. </p>
+                <p>Unless the auto_failback directive is set to off in the HA.cf file, once the master node becomes available again resources will fail-over again so they are once again owned by the master node.</p>
+            </div>
+        </section>
+        <section>
+            <h2>Gratutious ARP</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left; float:left;">   
+                <p>A gratuitous ARP is an ARP reply when there was no ARP request. By adopting this method, the ARP cache on the router and hosts&#8217; cache can be refreshed. </p>
+                <p>In order to be compatible for most hardware, there are 2 types of gratutious ARP, like below: </p>
+                <p>1. Sending ARP <b style="color:red">reply</b> to the broadcast hardware address then all hosts on the LAN will receive the ARP reply and refresh their ARP cache. </p>
+                <p>2. Sending an ARP <b style="color:red">request</b> for itself then all hosts on the LAN will refresh their ARP caches using the source hardware address of this request. </p>
+            </div>
+            <img alt="Gratutious ARP response" src="/images/HA/garp-rsp.png">
+            <p style="font-size:16px;">Gratutious ARP response</p>
+            <img alt="Gratutious ARP request" src="/images/HA/garp-req.png">
+            <p style="font-size:16px;">Gratutious ARP request</p>
+        </section>
+        <section>
+            <h2>ldirector</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>Ldirectord runs on linux-directors to monitor the health of the real-servers by periodically making a request and checking for an expected response. </p>
+                <p>For HTTP servers this means requesting a known URL and checking that the response contains an expected string. This is called a &#8220;negotiate&#8221; check. </p>
+                <p>Ldirectord has support for performing a negotiate check for HTTP, HTTPS, FTP, IMAP, POP, SMTP, LDAP, NNTP and MySQL servers. Adding negotiate check support for other protocols is usually quite simple. Ldirectord is also able to perform a simple check &#8220;connect&#8221; check for other servcies. The connect check simply verifies that the port on the real-servers is able to accept a connection.</p>
+                <br>
+                <p>Here is an example: If a real-servers fails then the server is made quiescent and will be reinserted once it comes back on line. If all the real-servers are down then a fall-back server is inserted into the pool, which will be made quiescent one of the real web servers comes back on line. Typically, the fall-back server is localhost. If an HTTP virtual service is being provided then it is useful to run an Apache HTTP server that returns a page indicating that the service is temporarily inaccessible. </p>
+            <p><b>Reference: </b><a href="http://horms.net/projects/ldirectord/" target="_blank">ldirectord webpage</a></p>
+            </div>
+        </section>
+        <section>
+            <h2>Fencing and STONITH</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>Fencing is a very important concept in computer clusters for HA (High Availability). A cluster sometimes detects that one of the nodes is behaving strangely and needs to remove it. This is called fencing and is commonly done with a STONITH resource. Fencing may be defined as a method to bring an HA cluster to a known state.</p>
+            <p>To ensure the resource is only running on one node, sometimes when the resource state on some nodes is not certain, fencing comes in. Fencing can ensure that the node does not run any important resources. </p>
+            <p><b>Reference: </b><a href="http://doc.opensuse.org/products/draft/SLE-HA/SLE-ha-guide_sd_draft/cha.ha.fencing.html" target="_blank">Fencing and STONITH guide</a></p>
+            </div>
+        </section>
+        <section>
+            <h2>Heartbeat conf</h2>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <h4>Reference:</h4>
+                <h5>1. <a href="http://www.ultramonkey.org/3/topologies/config/ha/single/real-server/ha.cf" target="_blank">ha.cf on Webpage</a></h5>
+                <h5>2. <a href="/images/HA/ha.cf.txt" target="_blank">man ha.cf</a></h5>
+                <hr>
+                <d>心跳方式：ucast,mcast,serial</p>
+                <p>debugfile /var/log/HA-debug:该文件保存 heartbeat 的调试信息</p>
+                <p>logfile /var/log/HA-log:heartbeat 的日志文件</p>
+                <p>keepalive 2:心跳的时间间隔,默认时间单位为秒</p>
+                <p>deadtime 30:超出该时间间隔未收到对方节点的心跳,则认为对方已经死亡。</p>
+                <p>warntime 10:超出该时间间隔未收到对方节点的心跳,则发出警告并记录到日志中。</p>
+                <p>initdead 120:在某些系统上,系统启动或重启之后需要经过一段时间网络才能正常工作,该选项用于解决这种情况产生的时间间隔。取值至少为 deadtime 的两倍。</p>
+                <p>udpport 694:设置广播通信使用的端口,694 为默认使用的端口号。</p>
+                <p>baud 19200:设置串行通信的波特率。</p>
+                <p>serial /dev/ttyS0:选择串行通信设备,用于双机使用串口线连接的情况。如果双机使用以太网连接,则应该关闭该选项。</p>
+                <p>bcast eth0:设置广播通信所使用的网络接口卡。</p>
+                <p>auto_failback on:heartbeat 的两台主机分别为主节点和从节点。主节点在正常情况下占用资源并运行所有的服务,遇到故障时把资源交给从节点并由从节点运行服务。在该选项设为 on 的情况下,一旦主节点恢复运行,则自动获取资源并取代从节点,否则不取代从节点。<p>
+                <p>ping ping-node1 ping-node2:指定 ping node,ping node 并不构成双机节点,它们仅仅用来测试网络连接。</p>
+                <p>respawn hacluster /usr/lib/heartbeat/ipfail:指定与 heartbeat 一同启动和关闭的进程,该进程被自动监视,遇到故障则重新启动。最常用的进程是 ipfail,该进程用于检测和处理网络故障,需要配合ping 语句指定的 ping node 来检测网络连接。</p>
+            </div>
+        </section>
+    </section>
+    <section>
+        <section>
+            <h2>Corosync</h2>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <img alt="corosync architecture" src="/images/HA/corosync_arch.png" style="width:40%; float:left; margin-left:5%; margin-right:10%;">
+                <div style="width:40%; float:left; margin-top:15px;">
+                    <p><b>The totem stack:</b> Allow every node in the cluster to remain in synchronization when processor failure occurs or new processors are included in the membership. And the totem stack supports the ability to communicate redundantly over multiple network interfaces. [Above features are based on the &#8220;Totem Single Ring Ordering and Membership Protocol&#8221; & &#8220;Totem Redundant Ring Protocol&#8221;, which will be described in the &#8220;down&#8221; slide.]</p>
+                    <p><b>IPC Manager:</b> Responsible for receipt and transmission of IPC request, and routed via the service manager to the appropriate service engine plugin. Consists of 2 file description: blocking and non-blocking.  </p>
+                    <p><b>Service Engine:</b> The third parties CRM, like Pacemaker, CMAN, etc.</p>
+                    <p><b>Service Manager:</b> Loading Service Engine plugin, route all requests to the service engine via IPC, Send memebership changes, Deliver info from the low-level Totem Single Ring Protocol to service engine, Also route synchronization activities with the synchronization engine.</p>
+                    <p><b>Synchronization Engine:</b> Directing the recovery of all service engines after a failure or addition of a processor. Being called by Service Engine in some cases. [There is some general APIs: sync_init, sync_process, sync_activate, sync_abort]</p>
+                </div>
+                <p><b>Reference: </b><a href="https://www.kernel.org/doc/ols/2008/ols2008v1-pages-85-100.pdf" target="_blank">Download the paper</a></p>
+            </div>
+        </section>
+        <section>
+            <h2>Totem Single Ring Ordering and Membership protocol</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p><b>Aim:</b> Supports High-Available Fault-tolerant Distributed systems that must continue to operate despite network partitioning and remerging and despite processor failure and restart. </p>
+                <p><b>Key Mechanism:</b></p>
+                <p>1. The Total Ordering Protocol: provides an agreed(msg in the same order) and safe(The Msgs: all-received-up-to have been received) delivery of messages in a broadcast domain, which based on a failure-free assumption(no token missing, no processor failing, etc)</p>
+                <p>2. The Membership Protocol: Detects processor failure, network partitioning, and loss of all copies of token, then reconstructs new ring.</p>
+                <p>3. The Recovery Protocol: Aim to recover the messages that had not been received in the old ring(As we know now[maybe you didn&#8217;t know, it&#8217;s in the down slide about 4 state of processor can be], we must get through a gather state and commit state then locate in the recovery state, which means there must be a new ring construction caused my new-joined processor or token-loss, so we need to recover the message those are not that &#8220;agreed&#8221; and &#8220;safe&#8221; to maintain the extended virtual synchrony)</p>
+                <p>4. The Flow Control Mechanism: Provide high performance under high load( Note, we are broadcast here. ). What adopts in the Totem SRP is one processor will put the broadcast messages it being unable to catch up the rate to handle in its buffer, and empty its buffer before processing the arrived tokem or broadcasting messages. </p>
+                <p><b>Reference: </b><code><a href="http://www.csie.fju.edu.tw/~yeh/research/papers/os-reading-list/amir-tocs95-totem.pdf" target="_blank">paper of SRP</a></code>  <code><a href="www.cse.scu.edu/~jholliday/COEN317F04/totem.ppt" target="_blank">the slides of paper</a></code><a href="/images/HA/totem-slides-in-CN.pptx">Totem-slides-in-CN</a></p>
+            </div>
+        </section>
+        <section>
+            <h2>The processors&#8217; Four States Shifting</h2>
+            <br>
+            <img src="/images/HA/state-graph-of-membership-protocol.png" width="60%">
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            </div>
+        </section>
+        <section>
+            <h2>6 Steps in the Recovery Protocol</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            <p>1. Exchange Msgs with other processors that were member of the same old ring to ensure that they have the same set of messages broadcast on the same old ring but not delivered yet. (Only this msg in the Recovery Protocol is broadcast. )</p>
+            <p>2. Deliver the Msg which hasn&#8217;t been deivered yet to one specific Application(the communication channel in one processor). </p>  
+            <p>3. Deliver the first Configuration Change message, which initiates the transitional configuration. </p>
+            <p>4. Deliver to the application further messages that could not be delivered in agreed or safe order on the old ring (because delivery might violate the requirements for agreed or safe delivery), but that can be delivered in agreed or safe order in the smaller transitional configuration(The difference with step 2). </p>
+            <p>5. Deliver the second Configuration Changes message, which initiates the new regular configuration. </p>
+            <p>6. Shift to the operational state.</p>
+            <br>
+            <p>Here is the example, transmition configuration is the can be understood as the Intersection of old and new configuration. </p>
+            </div>
+            <img src="/images/HA/an_example_of_trans_ring.png" width="40%">
+        </section>
+        <section>
+            <h2>Totem Redundant Ring Protocol</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            <p><b>Aiming to:</b> Be able to use redundant networks in a fault-tolerant distributed system handling much heavier load than SRP. </p>
+            <p><b>Replication Styles:</b></p>
+            <p><b>Active replication:</b> All messages and tokens are sent over all networks at the same time. But Each message must be delivered(but the message will be received multi times by the processors, just filter the replicated Msg then deliver to the application. ) only once to the application. And there is another trick is how to handle the multi copies of token. </p>
+            <p><b>Passive replication:</b> Messages are sent alternately over one of the available networks. In the fault-free case, the maximum throughput equals the sum of the throughputs of all networks. </p>
+            <p><b>Active-passive replication:</b> Every message or token is sent K networks simultaneously(1 < K < N). </p>
+            <p><b>Reference: </b><a href="http://www.rcsc.de/pdf/icdcs02.pdf" target="_blank">Download the paper</a></p>
+            </div>
+        </section>
+    </section>
+    <section>
+        <h2>LRM and scripts</h2>
+        <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            <p>2. ResourceAgent scripts define a set of start, stop or monitor operations, which are used to operate on a resource instance. The LocalResourceManager (LRM) HAs the responsibility for performing operations on resources, by using ResourceAgent scripts to carry out the work. LRM also provides information about resources. It can provide a list of resources that are currently primary and its current state.</p>
+            <p>lrmd, stonithd</p>
+            <p>OCF Resource Agents Guides: <a href="http://www.linux-HA.org/doc/dev-guides/ra-dev-guide.html" target="_blank">OCF</a></p>
+            <p>usecase and examples link: <a href="http://www.linux-HA.org/doc/man-pages/ap-ra-man-pages.html" target="_blank">Resource Agents Scripts</a></p>
+        </div>
+    </section>
+    <section>
+        <h2>CRM overview</h2>
+        <img alt="HA components" src="/images/HA/ha_internals.png" style="width:30%;">
+        <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+            <p>ClusterInformationBase (aka CIB) is the component which stores information about the cluster. The CIB uses XML to represent both the cluster’s configuration and current state of all resources in the cluster. The contents of the CIB are automatically kept in sync across the entire cluster and are used by the PEngine to compute the ideal state of the cluster and how it should be achieved.</p>
+            <p>The ClusterResourceManagerDaemon (CRMD) runs on every node and coordinates the actions of all other cluster resource managers.This list of instructions is then fed to the DC (Designated Co-ordinator). Pacemaker centralizes all cluster decision making by electing one of the CRMd instances to act as a master. Should the elected CRMd process, or the node it is on, fail… a new one is quickly established.</p>
+            <p>The PolicyEngine (PE) module is the one who performs computation to describe the actions and their dependencies necessary to go from the current cluster state to the target cluster state, then it passes these actions to Transitioner,which communicates with the LocalResourceManager on every node and informs about the actions decided by PE (start, stop resources). The peer nodes all report the results of their operations back to the DC and based on the expected and actual results, will either execute any actions that needed to wait for the previous one to complete, or abort processing and ask the PEngine to recalculate the ideal cluster state based on the unexpected results.</p>
+            <p>stonithd</p>
+        </div>
+    </section>
+    <section>
+        <section>
+            <h2>Pacemaker</h2>
+            <br>
+            <div style="padding-left:10%;padding-right:10%;font-size:16px;text-align: left;">   
+                <p>Pacemaker is a scalable High-Availability cluster resource manager formerly part of Heartbeat [LinuxHA]. Pacemaker was first released as part of Heartbeat-2.0.0 in July 2005 and overcame the deficien- cies of Heartbeat’s previous cluster resource manager. </p>
+                <p>Pacemaker functionality is broken into logically distinct pieces, each one being a separate process and able to be rewritten/replaced independently of the others</p>
+                <ul>
+                <li>cib—Short for Cluster Information Base. Contains definitions of all cluster options, nodes, resources, their relationships to one another and current sta- tus. Synchronizes updates to all cluster nodes. </li>
+                <li>lrmd—Short for Local Resource Management Daemon. Non-cluster aware daemon that presents a common interface to the supported resource types. Interacts directly with resource agents (scripts). </li>
+                <li>pengine—Short for Policy Engine. Computes the next state of the cluster based on the current state and the configuration. Produces a transition graph contained a list of actions and dependencies. </li>
+                <li>tengine—Short for Transition Engine. Co- ordinates the execution of the transition graph pro- duced by the Policy Engine. </li>
+                <li>crmd—Short for Cluster Resource Management Daemon. Largely a message broker for the PE, TE, and LRM. Also elects a leader to co- ordinate the activities of the cluster. </li>
+                </ul>
+            <p>Pacemaker from Scratch Guides: <a href="http://clusterlabs.org/doc/en-US/Pacemaker/1.1-crmsh/html/Clusters_from_Scratch/index.html" target="_blank">Guides</a></p>
+            <p>Pacemaker Explained: <a href="http://clusterlabs.org/doc/en-US/Pacemaker/1.1-crmsh/html/Pacemaker_Explained/index.html" target="_blank">Manual</a></p>
+            </div>
+        </section>
+    </section>
+    </div>
+</div>
+
+
+			</div>
+
+		</div>
+
+		<script src="/javascripts/reveal/head.min.js"></script>
+		<script src="/javascripts/reveal/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/none
+
+				// Optional libraries used to extend on reveal.js
+				dependencies: [
+					{ src: '/javascripts/reveal/plugin/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: '/javascripts/reveal/plugin/markdown/showdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: '/javascripts/reveal/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: '/javascripts/reveal/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: '/javascripts/reveal/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+					{ src: '/javascripts/reveal/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+					// { src: '/javascripts/reveal/plugin/remotes/remotes.js', async: true, condition: function() { return !!document.body.classList; } }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
