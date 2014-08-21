@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Ceph | XueChendi]]></title>
   <link href="http://xuechendi.github.io/blog/categories/ceph/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2014-08-15T06:16:21+08:00</updated>
+  <updated>2014-08-21T08:06:47+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -136,6 +136,15 @@ make
 make install</p>
 
 <p>```</p>
+
+<p><strong><strong><strong><strong><strong><strong><strong><strong><em>Extra parts</em></strong></strong></strong></strong></strong></strong></strong></strong>****
+I have ran into the libboost-thread and libboost-system problem for really a lot of times, so the best way to do here is that:</p>
+
+<h2>Keep same and the only version of libboost dpkg installed in your system ( verified by dpkg -l | grep boost )</h2>
+
+<h2>Any time after your purge/remove and install pkg, don&rsquo;t just try make, you need to do ./configure first</h2>
+
+<h2>Oh, maybe problem also can be caused by you have multi gcc/g++ version</h2>
 ]]></content>
   </entry>
   

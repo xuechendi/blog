@@ -68,7 +68,7 @@
     </url>
     <url>
         <loc>http://xuechendi.github.io/blog/2013/12/12/building-ceph/</loc>
-        <lastmod>2014-08-15T05:40:27+08:00</lastmod>
+        <lastmod>2014-08-21T08:06:43+08:00</lastmod>
     </url>
     <url>
         <loc>http://xuechendi.github.io/blog/2013/12/12/vm-creation-by-virsh/</loc>
@@ -95,6 +95,14 @@
         <lastmod>2014-08-15T05:40:27+08:00</lastmod>
     </url>
     <url>
+        <loc>http://xuechendi.github.io/blog/2014/08/21/build-your-own-vpn-server/</loc>
+        <lastmod>2014-08-21T07:51:25+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://xuechendi.github.io/blog/2014/08/21/vm-creation-by-virsh-part2/</loc>
+        <lastmod>2014-08-21T07:59:58+08:00</lastmod>
+    </url>
+    <url>
         <loc>http://xuechendi.github.io/404.html</loc>
         <lastmod>2014-08-15T05:40:27+08:00</lastmod>
     </url>
@@ -112,10 +120,10 @@
     </url>
     <url>
         <loc>http://xuechendi.github.io/blog/archives/</loc>
-        <lastmod>2014-08-15T06:00:09+08:00</lastmod>
+        <lastmod>2014-08-21T08:06:43+08:00</lastmod>
     </url>
     <url>
         <loc>http://xuechendi.github.io/</loc>
-        <lastmod>2014-08-15T06:00:09+08:00</lastmod>
+        <lastmod>2014-08-21T08:06:43+08:00</lastmod>
     </url>
 </urlset>
