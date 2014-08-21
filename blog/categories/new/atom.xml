@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: unfinished | XueChendi]]></title>
-  <link href="http://xuechendi.github.io/blog/categories/unfinished/atom.xml" rel="self"/>
+  <title><![CDATA[Category: new | XueChendi]]></title>
+  <link href="http://xuechendi.github.io/blog/categories/new/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
   <updated>2014-08-22T04:11:01+08:00</updated>
   <id>http://xuechendi.github.io/</id>
@@ -271,33 +271,6 @@ eval_repop(repop); //check if this rep_op can send its commit and ack
 </code></pre>
 
 <p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Ceph Best known Performance Collection]]></title>
-    <link href="http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection/"/>
-    <updated>2013-12-13T15:35:00+08:00</updated>
-    <id>http://xuechendi.github.io/blog/2013/12/13/ceph-best-known-performance-collection</id>
-    <content type="html"><![CDATA[<p>In this posting, I hope to collect  <em>TILL NOW BEST KNOWN</em>  Ceph Performance and also their deployment/setup method.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[How to break into Ceph Codes]]></title>
-    <link href="http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes/"/>
-    <updated>2013-11-15T01:00:00+08:00</updated>
-    <id>http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes</id>
-    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this weekend</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Study of Data distribution methods--Crush]]></title>
-    <link href="http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method/"/>
-    <updated>2013-11-15T00:51:00+08:00</updated>
-    <id>http://xuechendi.github.io/blog/2013/11/15/crush-ceph-object-distribution-method</id>
-    <content type="html"><![CDATA[<p>wanna learn, mark here</p>
 ]]></content>
   </entry>
   

@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2014-08-21T08:22:15+08:00</updated>
+  <updated>2014-08-22T04:11:01+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -136,21 +136,37 @@ Still feels like listening to WAV. Er&hellip;.</p>
 
 <p><em>Ok, start here.</em></p>
 
+<h6>tip: I am not planning finish this article in a fast way, for I am trying to make it more meaninhful.</h6>
+
 <p>======</p>
+
+<h2>Content</h2>
+
+<ul>
+<li>Ceph Write IO Path overview</li>
+<li>3 phase codes deep dive</li>
+<li>Throttle and lock</li>
+<li>Latency breakdown</li>
+</ul>
+
+
+<h2>Referrence:</h2>
+
+<ul>
+<li><a href="https://ceph.com/docs/master/dev/object-store/">OBJECT STORE ARCHITECTURE OVERVIEW</a></li>
+<li><a href="https://ceph.com/docs/master/dev/osd_internals/map_message_handling/">MAP AND PG MESSAGE HANDLING</a></li>
+<li><a href="http://ceph.com/docs/master/dev/osd_internals/osd_throttles">OSD Internals</a></li>
+<li><a href="https://ceph.com/docs/master/dev/osd_internals/osd_overview/">OSD</a></li>
+</ul>
+
 
 <p>There is a IO path graph on ceph.com, pls click <code><a href="http://ceph.com/docs/master/dev/osd_internals/osd_throttles/?highlight=wbthrottle">OSD Internals</a></code>, I find the graph is a bit difficult to see, so redraw it in a vertical way</p>
 
-<div style="float:left;">
+<div style="float:left;width:100%">
 <div style="float:left; width:58%;">
     <div style="border-left:red solid 5px; padding-left:5%; ">
-    <p>**Pipe::Reader** call the function DispatchQueue::enqueue, put the msg into mqueue</p>
-    <p>**DispatchThread** loops in getting msg from mqueue and dispatch the msg to who is able to handle( msgr->ms_deliver_dispatch(m), in this case, OSD::ms_dispatch(m) will be called then )<p>
-    </div>
-    <br>
-    <div style="border-left:green solid 5px; padding-left:5%;">
-    <p>**OSD::_dispatch** switch (msg->type), in this case, would be &#8220;CEPH_MSG_OSD_OP&#8221;, call handle_op(op) </p>
-    <p>**handle_op** do some preparation before actually applying this op, includes refresh the map, check the obj name and data, remaining space, then it cal the pgid and lock the pg, call enqueue_op to put the op into osd->op_wq with pgid and op. </p>
-    <p>**worker wq** ThreadPool::worker loops all the time to join_old_threads, then dequeue any items in the workqueue, by now, that would be our write op. Then work_queue start to process this op request by OSD::OpWQ::_process function, then OSD::dequeue_op function, and do_request. After dequeue, the pg lock is then released.</p>
+    <h3>Queue and thread overview</h3>
+        <h5>Will finish today</h5>
     </div>
 </div>
 
@@ -158,62 +174,313 @@ Still feels like listening to WAV. Er&hellip;.</p>
 </div>
 
 
-<br>
+<h3>Below I will describe the write io path by dividing into 3 parts, Dispatch write io msg, write to journal, write to filestore :</h3>
 
+<h3>DispatchThread</h3>
 
-<div style="width:100%; float:left; border-left:#00FFFF solid 5px; padding-left:5%; font-size:10px;">
-    <p>**do_request** Seems it calls the do_request implemented in ReplicatedPG.cc, then calls do_op(op) also implemented in ReplicatedPG.cc.</p>
-    <p>**do_op** 
-</p>
+<div style="font-size:12px;  border: solid #999 1px; background-color: #eee; width:100%; overflow: scroll; padding:5px; white-space:nowrap;text-overflow:scroll;">
+1:2013-12-25 15:20:27.824912 7f8fda903700 20 <red>osd.12</red> 344 </red>_dispatch</red> 0x55803b40 <red>osd_op</red>(client.6219.0:8 rbd_data.10126b8b4567.0000000000000000 [write 0~512] 3.ff00f0a2 e344) v4<br>
+2:2013-12-25 15:20:27.824935 7f8fda903700 15 <red>osd.12</red> 344 <red>enqueue_op</red> 0x54e7cb60 prio 63 cost 512 latency 0.000163 <red>osd_op</red>(client.6219.0:8 rbd_data.10126b8b4567.0000000000000000 [write 0~512] 3.ff00f0a2 e344) v4<br>
 </div>
 
 
-<br>
 
 
-<br>
+<figure class='code'><figcaption><span>DispatchThread</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">qitem</span> <span class="o">=</span> <span class="n">mqueue</span><span class="p">.</span><span class="n">dequeue</span><span class="p">()</span> <span class="c1">//mqueue is enqueued by Pipe::Reader, it stores every msg received by this osd.</span>
+</span><span class='line'><span class="n">m</span> <span class="o">=</span> <span class="n">qitem</span><span class="p">.</span><span class="n">get_message</span><span class="p">()</span>
+</span><span class='line'><span class="n">msgr</span><span class="err">→</span><span class="n">ms_deliver_dispatch</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+</span><span class='line'><span class="n">p</span> <span class="o">=</span> <span class="n">dispatchers</span><span class="p">.</span><span class="n">begin</span><span class="p">()</span>
+</span><span class='line'><span class="n">p</span><span class="err">→</span><span class="n">ms_dispatch</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>  <span class="o">=&gt;</span> <span class="n">OSD</span><span class="o">::</span><span class="n">ms_dispatch</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="c1">// find a dispatcher can handle this msg</span>
+</span><span class='line'><span class="n">_dispatch</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="c1">// OSD.cc, log above is printed in this function</span>
+</span><span class='line'><span class="n">dispatch_op</span><span class="p">(</span><span class="n">op</span><span class="p">)</span> <span class="c1">// switch the MSG type in this function, and in this case, msg-&gt;type would be &quot;CEPH_MSG_OSD_OP&quot;</span>
+</span><span class='line'><span class="n">handle_op</span><span class="p">(</span><span class="n">op</span><span class="p">)</span> <span class="c1">//do some preparation including refresh the osd map</span>
+</span><span class='line'><span class="n">enqueue_op</span><span class="p">(</span><span class="n">pg</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span>
+</span><span class='line'><span class="n">op_wq</span><span class="p">.</span><span class="n">queue</span><span class="p">(</span><span class="n">pg</span><span class="p">,</span> <span class="n">op</span><span class="p">)</span> <span class="c1">//When OSD daemon starts, an OSD instance will be created, here calls the osd-&gt;op_wq-&gt;_enqueue(pair&lt;...&gt;) to put the op into osd-&gt;op_wq-&gt;pqueue</span>
+</span></code></pre></td></tr></table></div></figure>
 
 
-<p>Below are the logs :</p>
+<h3>OSD:OpWQ</h3>
 
-<p><div style="float:left; font-size:12px;  border: solid #999 1px; background-color: #eee; width:100%; overflow: scroll; padding:5px; white-space:nowrap;text-overflow:scroll;">
-<br>root@MPXDELL2:~# tail -f /var/log/ceph/osd.15.log  | grep &ldquo;dispatch\|queue_op\|<red>worker</red>&rdquo;
-<br>2013-12-18 19:42:51.999692 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x23d6000 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:51.999748 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9bc40 prio 63 cost 39 latency 0.000151 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:51.999814 7f2c8d76e700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
-<br>2013-12-18 19:42:51.999824 7f2c8d76e700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bc40 prio 63 cost 39 latency 0.000228 osd_op(client.5722.0:4 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_object_prefix] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;732 (0&#8217;0,267&#8217;732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;732 active+clean]
-<br>2013-12-18 19:42:52.000519 7f2c8d76e700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bc40 finish
-<br>2013-12-18 19:42:52.000535 7f2c8d76e700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
-<br>2013-12-18 19:42:52.001161 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x23d6480 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:52.001188 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9bb60 prio 63 cost 24 latency 0.000107 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:52.001213 7f2c8af69700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
-<br>2013-12-18 19:42:52.001230 7f2c8af69700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bb60 prio 63 cost 24 latency 0.000148 osd_op(client.5722.0:5 rbd_header.10126b8b4567 [call rbd.get_stripe_unit_count] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;732 (0&#8217;0,267&#8217;732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;732 active+clean]
-<br>2013-12-18 19:42:52.001615 7f2c8af69700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9bb60 finish
-<br>2013-12-18 19:42:52.001627 7f2c8af69700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
-<br>2013-12-18 19:42:52.002200 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x23d6240 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:52.002223 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9ba80 prio 63 cost 0 latency 0.000099 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:52.002275 7f2c8ff73700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
-<br>2013-12-18 19:42:52.002293 7f2c8ff73700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9ba80 prio 63 cost 0 latency 0.000169 osd_op(client.5722.0:6 rbd_header.10126b8b4567 [watch add cookie 1 ver 0] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;732 (0&#8217;0,267&#8217;732] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;732 active+clean]
-<br>2013-12-18 19:42:52.002800 7f2c8ff73700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9ba80 finish
-<br>2013-12-18 19:42:52.002805 7f2c8ff73700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
-<br>2013-12-18 19:42:52.004577 7f2ca26c5700 12 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ start processing 0x2aa1dd80 (1 active)
-<br>2013-12-18 19:42:52.005139 7f2ca26c5700 15 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ done processing 0x2aa1dd80 (0 active)
-<br>2013-12-18 19:42:52.005334 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x2ad1b480 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:52.005373 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9b9a0 prio 63 cost 111 latency 0.000124 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:52.005444 7f2c97f83700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
-<br>2013-12-18 19:42:52.005454 7f2c97f83700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b9a0 prio 63 cost 111 latency 0.000205 osd_op(client.5722.0:7 rbd_header.10126b8b4567 [call rbd.get_size,call rbd.get_features,call rbd.get_snapcontext,call rbd.get_parent,call lock.get_info] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;733 (0&#8217;0,267&#8217;733] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;733 active+clean]
-<br>2013-12-18 19:42:52.006585 7f2c97f83700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b9a0 finish
-<br>2013-12-18 19:42:52.006601 7f2c97f83700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
-<br>2013-12-18 19:42:52.010185 7f2c9e790700 20 osd.15 267 <red><em>dispatch</red> 0x2ad1b240 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:52.010207 7f2c9e790700 15 osd.15 267 <red><red>enqueue_op</red></red> 0x2aa9b8c0 prio 63 cost 0 latency 0.000168 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4
-<br>2013-12-18 19:42:52.010259 7f2c96780700 12 OSD::op_tp <red>worker</red> wq OSD::OpWQ start processing 0x1 (1 active)
-<br>2013-12-18 19:42:52.010269 7f2c96780700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b8c0 prio 63 cost 0 latency 0.000230 osd_op(client.5722.0:9 rbd_header.10126b8b4567 [watch remove cookie 1 ver 0] 3.fa956e77 e267) v4 pg pg[3.e77( v 267&#8217;733 (0&#8217;0,267&#8217;733] local-les=267 n=2 ec=15 les/c 267/267 266/266/266) [15] r=0 lpr=266 mlcod 267&#8217;733 active+clean]
-<br>2013-12-18 19:42:52.010692 7f2c96780700 10 osd.15 267 <red>dequeue_op</red> 0x2aa9b8c0 finish
-<br>2013-12-18 19:42:52.010696 7f2c96780700 15 OSD::op_tp <red>worker</red> wq OSD::OpWQ done processing 0x1 (0 active)
-<br>2013-12-18 19:42:52.011222 7f2ca1ec4700 12 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ start processing 0x2aa1dd80 (1 active)
-<br>2013-12-18 19:42:52.011701 7f2ca1ec4700 15 FileStore::op_tp <red>worker</red> wq FileStore::OpWQ done processing 0x2aa1dd80 (0 active)
-<br>2013-12-18 19:42:56.918744 7f2c9e790700 20 osd.15 267 <red></em>dispatch</red> 0x2ad94380 pg_stats_ack(1 pgs tid 18) v1
-</textarea></p>
+<div style="font-size:12px;  border: solid #999 1px; background-color: #eee; width:100%; overflow: scroll; padding:5px; white-space:nowrap;text-overflow:scroll;">
+3:2013-12-25 15:20:27.824972 7f8fc70dc700 12 OSD::op_tp worker wq <red>OSD::OpWQ</red> <red>start processing</red> 0x1 (1 active)<br>
+4:2013-12-25 15:20:27.824989 7f8fc70dc700 10 <red>osd.12</red> 344 <red>dequeue_op</red> 0x54e7cb60 prio 63 cost 512 latency 0.000217 osd_op(client.6219.0:8 rbd_data.10126b8b4567.0000000000000000 <red>[write 0~512]</red> 3.ff00f0a2 e344) v4 pg pg[3.a2( v 344&#8217;3679 (18&#8217;678,344&#8217;3679] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 mlcod 344&#8217;3678 active+clean]<br>
+5:2013-12-25 15:20:27.825069 7f8fc70dc700 10 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3679 (18&#8217;678,344&#8217;3679] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 mlcod 344&#8217;3678 active+clean] <red>do_op</red> osd_op(client.6219.0:8 rbd_data.10126b8b4567.0000000000000000 <red>[write 0~512]</red> 3.ff00f0a2 e344) v4 <red>may_write -> write-ordered</red><br>
+7:2013-12-25 15:20:27.825284 7f8fc70dc700 10 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3679 (18&#8217;678,344&#8217;3679] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 mlcod 344&#8217;3678 active+clean] <red>execute_ctx</red> 0x5548d800<br>
+8:2013-12-25 15:20:27.825302 7f8fc70dc700 10 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3679 (18&#8217;678,344&#8217;3679] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 mlcod 344&#8217;3678 active+clean] <red>do_op</red> ff00f0a2/rbd_data.10126b8b4567.0000000000000000/head//3 [write 0~512] ov 344&#8217;3679 av 344&#8217;3680 snapc 0=[] snapset 0=[]:[]+head<br>
+9:2013-12-25 15:20:27.825322 7f8fc70dc700 10 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3679 (18&#8217;678,344&#8217;3679] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 mlcod 344&#8217;3678 active+clean] <red>do_osd_op</red> ff00f0a2/rbd_data.10126b8b4567.0000000000000000/head//3 [write 0~512]<br>
+10:2013-12-25 15:20:27.825338 7f8fc70dc700 10 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3679 (18&#8217;678,344&#8217;3679] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 mlcod 344&#8217;3678 active+clean] <red>do_osd_op</red>  write 0~512<br>
+11:2013-12-25 15:20:27.825361 7f8fc70dc700 15 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3679 (18&#8217;678,344&#8217;3679] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 mlcod 344&#8217;3678 active+clean] <red>do_osd_op_effects</red> on session 0x54fb7d20<br>
+12:2013-12-25 15:20:27.825653 7f8fc70dc700 10 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3680 (18&#8217;679,344&#8217;3680] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 luod=344&#8217;3679 lcod 344&#8217;3679 mlcod 344&#8217;3678 active+clean] <red>new_repop</red> rep_tid 24 on osd_op(client.6219.0:8 rbd_data.10126b8b4567.0000000000000000 [write 0~512] 3.ff00f0a2 e344) v4<br>
+13:2013-12-25 15:20:27.825678 7f8fc70dc700  7 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3680 (18&#8217;679,344&#8217;3680] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 luod=344&#8217;3679 lcod 344&#8217;3679 mlcod 344&#8217;3678 active+clean] <red>issue_repop</red> rep_tid 24 o ff00f0a2/rbd_data.10126b8b4567.0000000000000000/head//3<br>
+14:2013-12-25 15:20:27.825724 7f8fc70dc700 10 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3680 (18&#8217;679,344&#8217;3680] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 luod=344&#8217;3679 lcod 344&#8217;3679 mlcod 344&#8217;3678 active+clean] <red>eval_repop</red> repgather(0x55842780 344&#8217;3680 rep_tid=24 wfack=12,13 wfdisk=12,13 op=osd_op(client.6219.0:8 rbd_data.10126b8b4567.0000000000000000 [write 0~512] 3.ff00f0a2 e344) v4) wants=ad<br>
+15:2013-12-25 15:20:27.825759 7f8fc70dc700 10 <red>osd.12</red> pg_epoch: 344 pg[3.a2( v 344&#8217;3680 (18&#8217;679,344&#8217;3680] local-les=338 n=3 ec=15 les/c 338/342 337/337/334) [12,13] r=0 lpr=337 luod=344&#8217;3679 lcod 344&#8217;3679 mlcod 344&#8217;3678 active+clean] <red>apply_repop</red>  applying update on repgather(0x55842780 344&#8217;3680 rep_tid=24 wfack=12,13 wfdisk=12,13 op=osd_op(client.6219.0:8 rbd_data.10126b8b4567.0000000000000000 [write 0~512] 3.ff00f0a2 e344) v4)<br>
+16:2013-12-25 15:20:27.825784 7f8fc70dc700  5 filestore(/data/osd.12) <red>queue_transactions</red> existing osr(3.a2 0x18b7840)/0x18b7840<br>
+17:2013-12-25 15:20:27.825802 7f8fc70dc700  5 filestore(/data/osd.12) <red>queue_transactions</red> (writeahead) 3457004 0x5548dbf0,0x5548db38<br>
+18:2013-12-25 15:20:27.825807 7f8fc70dc700 10 journal <red>op_journal_transactions</red> 3457004 0x5548dbf0,0x5548db38<br>
+19:2013-12-25 15:20:27.825840 7f8fc70dc700 10 <red>osd.12</red> 344 <red>dequeue_op</red> 0x54e7cb60 finish<br>
+20:2013-12-25 15:20:27.825843 7f8fe003b700 20 journal <red>write_thread_entry</red> <red>woke up</red><br>
+21:2013-12-25 15:20:27.825846 7f8fc70dc700 15 OSD::op_tp worker wq <red>OSD::OpWQ</red> <red>done processing</red> 0x1 (0 active)<br>
+</div>
+
+
+
+
+<figure class='code'><figcaption><span>OSD:OpWQ</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cm">/*ThreadPool::worker is a thread looping all the time to dequeue and process items of workerqueue in his threadpool, codes in WorkQueue.cc*/</span>
+</span><span class='line'><span class="n">wq</span> <span class="o">=</span> <span class="n">work_queues</span><span class="p">[</span><span class="n">last_work_queue</span><span class="p">];</span> <span class="c1">//wq is osd-&gt;op_wq here</span>
+</span><span class='line'><span class="kt">void</span> <span class="o">*</span><span class="n">item</span> <span class="o">=</span> <span class="n">wq</span><span class="o">-&gt;</span><span class="n">_void_dequeue</span><span class="p">();</span> <span class="c1">//osd-&gt;op_wq-&gt;_dequeue() dequeue one item from osd-&gt;op_wq-&gt;pqueue, and push into pg_for_processing[&amp;*pg]</span>
+</span><span class='line'><span class="n">wq</span><span class="o">-&gt;</span><span class="n">_void_process</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">tp_handle</span><span class="p">);</span> <span class="c1">//osd-&gt;op_wq-&gt;_process(pg) pop item from pg_for_processing[&amp;*pg]</span>
+</span><span class='line'><span class="n">osd</span><span class="err">→</span><span class="n">dequeue_op</span><span class="p">(</span><span class="n">pg</span><span class="p">,</span> <span class="n">op</span><span class="p">);</span> <span class="c1">//log above taged by &quot;dequeue_op&quot; is printed here. it calls do_request function, then print another &quot;dequeue_op&quot; msg.</span>
+</span><span class='line'><span class="n">pg</span><span class="err">→</span><span class="n">do_request</span><span class="p">(</span><span class="n">op</span><span class="p">);</span> <span class="c1">//implemented in ReplicatedPG.cc, switch the op type and calls do_op;</span>
+</span><span class='line'><span class="n">do_op</span><span class="p">(</span><span class="n">op</span><span class="p">);</span> <span class="c1">// Initiate the OpContext ctx, then calls execute_ctx(ctx);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">execute_ctx</span><span class="p">(</span><span class="n">ctx</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">prepare_transaction</span><span class="p">(</span><span class="n">ctx</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">do_osd_ops</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">ctx</span><span class="o">-&gt;</span><span class="n">ops</span><span class="p">);</span> <span class="c1">//switch (op.op), if read, call osd-&gt;store-&gt;read; if write, call ObjectStore::Transaction::write() prepare the transaction.</span>
+</span><span class='line'>  <span class="n">ctx</span><span class="o">-&gt;</span><span class="n">reply</span> <span class="o">=</span> <span class="n">new</span> <span class="n">MOSDOpReply</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">get_osdmap</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">get_epoch</span><span class="p">(),</span> <span class="mi">0</span><span class="p">);</span> <span class="c1">//Write operations aren&#39;t allowed to return a data payload</span>
+</span><span class='line'>  <span class="n">RepGather</span> <span class="o">*</span><span class="n">repop</span> <span class="o">=</span> <span class="n">new_repop</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">obc</span><span class="p">,</span> <span class="n">rep_tid</span><span class="p">);</span> <span class="c1">//replica operation</span>
+</span><span class='line'>  <span class="n">issue_repop</span><span class="p">(</span><span class="n">repop</span><span class="p">,</span> <span class="n">now</span><span class="p">);</span> <span class="c1">//add itself and all the replica peer into repop-&gt;wairfor_disk and repop-&gt;waitfor_ack; </span>
+</span><span class='line'>      <span class="k">for</span> <span class="n">peer</span> <span class="n">in</span> <span class="n">itsself</span> <span class="n">and</span> <span class="n">its</span> <span class="n">peers</span><span class="o">:</span>
+</span><span class='line'>          <span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_ack</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">peer</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_disk</span><span class="p">.</span><span class="n">insert</span><span class="p">(</span><span class="n">peer</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">MOSDSubOp</span> <span class="o">*</span><span class="n">wr</span> <span class="o">=</span> <span class="n">new</span> <span class="n">MOSDSubOp</span><span class="p">(...)</span>
+</span><span class='line'>      <span class="n">osd</span><span class="o">-&gt;</span><span class="n">send_message_osd_cluster</span><span class="p">(</span><span class="n">peer</span><span class="p">,</span> <span class="n">wr</span><span class="p">,</span> <span class="n">get_osdmap</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">get_epoch</span><span class="p">());</span> <span class="c1">//send supop to its peers</span>
+</span><span class='line'>  <span class="n">eval_repop</span><span class="p">(</span><span class="n">repop</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">apply_repop</span><span class="p">(</span><span class="n">repop</span><span class="p">);</span> <span class="c1">//if the writing to itself hasn&#39;t been applied, this function will put the transactions into osd-&gt;store-&gt;journal-&gt;writeq(talks about this later)</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_disk</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="n">send</span> <span class="n">commit</span> <span class="n">msg</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_ack</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="n">send</span> <span class="n">ack</span> <span class="n">msg</span>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_ack</span><span class="p">.</span><span class="n">empty</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_disk</span><span class="p">.</span><span class="n">empty</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">repop</span><span class="o">-&gt;</span><span class="n">applied</span><span class="p">)</span> <span class="n">remove</span><span class="p">(</span><span class="n">repop</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//then back to discuss the apply_repop function.</span>
+</span><span class='line'><span class="n">apply_repop</span><span class="p">(</span><span class="n">repop</span><span class="p">)</span>
+</span><span class='line'>  <span class="c1">//Set the completion action will be taken when this operation finishes here.</span>
+</span><span class='line'>  <span class="n">Context</span> <span class="o">*</span><span class="n">oncommit</span> <span class="o">=</span> <span class="n">new</span> <span class="n">C_OSD_OpCommit</span><span class="p">(</span><span class="n">this</span><span class="p">,</span> <span class="n">repop</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">Context</span> <span class="o">*</span><span class="n">onapplied</span> <span class="o">=</span> <span class="n">new</span> <span class="n">C_OSD_OpApplied</span><span class="p">(</span><span class="n">this</span><span class="p">,</span> <span class="n">repop</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">Context</span> <span class="o">*</span><span class="n">onapplied_sync</span> <span class="o">=</span> <span class="n">new</span> <span class="n">C_OSD_OndiskWriteUnlock</span><span class="p">(...);</span>
+</span><span class='line'>  <span class="n">osd</span><span class="err">→</span><span class="n">store</span><span class="err">→</span><span class="n">queue_transactions</span><span class="p">(</span><span class="err">…</span><span class="p">)</span> <span class="c1">//apply_repop calls queue_transactions function, and because when osd instance first initiated, store is created as a FileStore instance in funtion OSD::pre_init(), so here, we actually calls the FileStore::queue_transactions();</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">FileStore</span><span class="o">::</span><span class="n">queue_transactions</span><span class="p">()</span>
+</span><span class='line'>  <span class="n">osr</span><span class="o">-&gt;</span><span class="n">queue_journal</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">op</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">_op_journal_transactions</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">tls</span><span class="p">,</span> <span class="n">o</span><span class="o">-&gt;</span><span class="n">op</span><span class="p">,</span><span class="n">new</span> <span class="n">C_JournaledAhead</span><span class="p">(</span><span class="n">this</span><span class="p">,</span> <span class="n">osr</span><span class="p">,</span> <span class="n">o</span><span class="p">,</span> <span class="n">ondisk</span><span class="p">),</span><span class="n">osd_op</span><span class="p">);</span> <span class="c1">//C_JournaledAhead::finish() will be called when this transaction finishes.</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">_op_journal_transactions</span><span class="p">(...)</span>
+</span><span class='line'><span class="n">journal</span><span class="o">-&gt;</span><span class="n">submit_entry</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">tbl</span><span class="p">,</span> <span class="n">data_align</span><span class="p">,</span> <span class="n">onjournal</span><span class="p">,</span> <span class="n">osd_op</span><span class="p">);</span> <span class="c1">//journal is osd-&gt;store-&gt;journal here</span>
+</span><span class='line'>  <span class="n">completions</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">completion_item</span><span class="p">(...));</span> <span class="c1">//a completions queue, store the completion instance (which tells what action should be taken when this writing finished).</span>
+</span><span class='line'>  <span class="n">writeq</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">write_item</span><span class="p">(</span><span class="n">seq</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">alignment</span><span class="p">,</span> <span class="n">osd_op</span><span class="p">));</span> <span class="c1">//put the osd_op into osd-&gt;store-&gt;journal-&gt;writeq</span>
+</span><span class='line'>  <span class="n">writeq_cond</span><span class="p">.</span><span class="n">Signal</span><span class="p">();</span> <span class="c1">//wake up here writeq_cond.Wait() is =&gt; FileJournal::write_thread_entry()</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">osd</span><span class="o">-&gt;</span><span class="n">_process_finish</span><span class="p">()</span> <span class="c1">//ThreadPool::worker _void_process_finish , this function mainly erase the in_use info of pgs.</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//Ok, the worker_queue(osd-&gt;op_wq) finishes a whole loop till now, and back to get a new request.  </span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>FileJournal</h3>
+
+<div style="font-size:12px;  border: solid #999 1px; background-color: #eee; width:100%; overflow: scroll; padding:5px; white-space:nowrap;text-overflow:scroll;">
+20:2013-12-25 15:20:27.825843 7f8fe003b700 20 journal <red>write_thread_entry</red> woke up<br>
+22:2013-12-25 15:20:27.825856 7f8fe003b700 15 journal <red>prepare_single_write</red> 1 will write 10288709632 : seq 3457004 len 2577 -> 4096 (head 40 pre_pad 0 ebl 2577 post_pad 1439 tail 40) (ebl alignment -1)<br>
+23:2013-12-25 15:20:27.825882 7f8fe003b700 15 journal <red>do_aio_write</red> writing 10288709632~4096 + header<br>
+24:2013-12-25 15:20:27.825884 7f8fe003b700 20 journal <red>write_aio_bl</red> 0~4096 seq 0<br>
+25:2013-12-25 15:20:27.825887 7f8fe003b700 20 journal <red>write_aio_bl</red> .. 0~4096 in 1<br>
+26:2013-12-25 15:20:27.825940 7f8fe003b700 20 journal <red>write_aio_bl</red> 10288709632~4096 seq 3457004<br>
+27:2013-12-25 15:20:27.825944 7f8fe003b700 20 journal <red>write_aio_bl</red> .. 10288709632~4096 in 1<br>
+28:2013-12-25 15:20:27.826359 7f8fe003b700 20 journal <red>write_thread_entry</red> going to sleep<br>
+29:2013-12-25 15:20:27.826340 7f8fdf83a700 20 journal <red>write_finish_thread_entry</red> waiting for aio(s)<br>
+30:2013-12-25 15:20:27.826365 7f8fdf83a700 10 journal <red>write_finish_thread_entry</red> aio 0~4096 done<br>
+31:2013-12-25 15:20:27.826369 7f8fdf83a700 20 journal <red>check_aio_completion</red><br>
+32:2013-12-25 15:20:27.826371 7f8fdf83a700 20 journal <red>check_aio_completion</red> completed seq 0 0~4096<br>
+33:2013-12-25 15:20:27.826376 7f8fdf83a700 20 journal <red>write_finish_thread_entry</red> waiting for aio(s)<br>
+34:2013-12-25 15:20:27.826800 7f8fdf83a700 10 journal <red>write_finish_thread_entry</red> aio 10288709632~4096 done<br>
+35:2013-12-25 15:20:27.826806 7f8fdf83a700 20 journal <red>check_aio_completion</red><br>
+36:2013-12-25 15:20:27.826807 7f8fdf83a700 20 journal <red>check_aio_completion</red> completed seq 3457004 10288709632~4096<br>
+37:2013-12-25 15:20:27.826811 7f8fdf83a700 20 journal <red>check_aio_completion</red> queueing finishers through seq 3457004<br>
+38:2013-12-25 15:20:27.826813 7f8fdf83a700 10 journal <red>queue_completions_thru</red> seq 3457004 queueing seq 3457004 0x55df22a0 lat 0.000987<br>
+39:2013-12-25 15:20:27.826832 7f8fdf83a700 20 journal <red>write_finish_thread_entry</red> sleeping<br>
+40:2013-12-25 15:20:27.826841 7f8fdf039700 10 finisher(0x18e7018) <red>finisher_thread</red> doing [0x55df22a0]<br>
+41:2013-12-25 15:20:27.826849 7f8fdf039700  5 filestore(/data/osd.12) <red>_journaled_ahead</red> 0x54ff4370 seq 3457004 osr(3.a2 0x18b7840) 0x5548dbf0,0x5548db38<br>
+42:2013-12-25 15:20:27.826856 7f8fdf039700  5 filestore(/data/osd.12) <red>queue_op</red> 0x54ff4370 seq 3457004 osr(3.a2 0x18b7840) 2565 bytes   (queue has 1 ops and 2565 bytes)<br>
+43:2013-12-25 15:20:27.826869 7f8fdf039700 10 finisher(0x18e7018) <red>finisher_thread</red> done with [0x55df22a0]<br>
+44:2013-12-25 15:20:27.826873 7f8fdf039700 10 finisher(0x18e7018) <red>finisher_thread</red> empty<br>
+45:2013-12-25 15:20:27.826875 7f8fdf039700 10 finisher(0x18e7018) <red>finisher_thread</red> sleeping<br>
+</div>
+
+
+
+
+<figure class='code'><figcaption><span>FileJournal::Writer</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">FileJournal</span><span class="o">::</span><span class="n">write_thread_entry</span><span class="p">();</span> <span class="c1">//with/without aio will be different here. </span>
+</span><span class='line'>  <span class="n">r</span> <span class="o">=</span> <span class="n">prepare_multi_write</span><span class="p">(</span><span class="n">bl</span><span class="p">,</span> <span class="n">orig_ops</span><span class="p">,</span> <span class="n">orig_bytes</span><span class="p">);</span> <span class="c1">//r = prepare_single_write(bl, queue_pos, orig_ops, orig_bytes); pop item from writeq and push to journalq, journalq is to be used when need to sync.</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">aio</span><span class="p">)</span> <span class="n">write_aio_bl</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">second</span><span class="p">,</span> <span class="n">writing_seq</span><span class="p">);</span>
+</span><span class='line'>  <span class="c1">//if using aio, then will be like below</span>
+</span><span class='line'>      <span class="n">io_prep_pwritev</span><span class="p">(</span><span class="o">&amp;</span><span class="n">aio</span><span class="p">.</span><span class="n">iocb</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="n">aio</span><span class="p">.</span><span class="n">iov</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">pos</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">io_submit</span><span class="p">(</span><span class="n">aio_ctx</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">piocb</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">write_finish_cond</span><span class="p">.</span><span class="n">Signal</span><span class="p">();</span> <span class="c1">//write_finish_thread will wake up here</span>
+</span><span class='line'>      <span class="cm">/*==============================*/</span>
+</span><span class='line'>      <span class="n">write_finish_thread_entry</span><span class="p">();</span>
+</span><span class='line'>          <span class="n">check_aio_completion</span><span class="p">();</span> <span class="c1">//check each aio_info in the aio_queue(we push each write io into aio_queue in write_aio_bl function)</span>
+</span><span class='line'>          <span class="n">queue_completions_thru</span><span class="p">(</span><span class="n">journaled_seq</span><span class="p">);</span>
+</span><span class='line'>      <span class="cm">/*==============================*/</span>
+</span><span class='line'>        <span class="k">else</span> <span class="nf">do_write</span><span class="p">(</span><span class="n">bl</span><span class="p">);</span>
+</span><span class='line'>  <span class="c1">//if not using aio, will be like below</span>
+</span><span class='line'>      <span class="n">writev</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">num</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">fdatasync</span><span class="p">(</span><span class="n">fd</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">queue_completions_thru</span><span class="p">(</span><span class="n">journaled_seq</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">queue_completions_thru</span><span class="p">(</span><span class="n">journaled_seq</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">completion_item</span> <span class="n">next</span> <span class="o">=</span> <span class="n">completion_peek_front</span><span class="p">();</span> <span class="c1">//get item from completions</span>
+</span><span class='line'>  <span class="n">finisher</span><span class="o">-&gt;</span><span class="n">queue</span><span class="p">(</span><span class="n">next</span><span class="p">.</span><span class="n">finish</span><span class="p">);</span> <span class="n">put</span> <span class="n">the</span> <span class="n">completion</span><span class="p">.</span><span class="n">finish</span> <span class="o">=&gt;</span> <span class="n">C_JournaledAhead</span><span class="o">::</span><span class="n">finish</span><span class="p">()</span> <span class="n">in</span> <span class="n">finisher</span> <span class="kr">thread</span>
+</span><span class='line'>  <span class="n">finisher_cond</span><span class="p">.</span><span class="n">Signal</span><span class="p">();</span> <span class="c1">//wake up osd-&gt;store-&gt;journal-&gt;finisher thread, then calls fs-&gt;_journaled_ahead(osr, o, ondisk);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">FileStore</span><span class="o">::</span><span class="n">_journaled_ahead</span><span class="p">(</span><span class="n">OpSequencer</span> <span class="o">*</span><span class="n">osr</span><span class="p">,</span> <span class="n">Op</span> <span class="o">*</span><span class="n">o</span><span class="p">,</span> <span class="n">Context</span> <span class="o">*</span><span class="n">ondisk</span><span class="p">)</span>
+</span><span class='line'><span class="n">FileStore</span><span class="o">::</span><span class="n">queue_op</span><span class="p">(</span><span class="n">OpSequencer</span> <span class="o">*</span><span class="n">osr</span><span class="p">,</span> <span class="n">Op</span> <span class="o">*</span><span class="n">o</span><span class="p">)</span>
+</span><span class='line'><span class="n">osd</span><span class="o">-&gt;</span><span class="n">store</span><span class="o">-&gt;</span><span class="n">op_wq</span><span class="p">.</span><span class="n">queue</span><span class="p">(</span><span class="n">osr</span><span class="p">);</span> <span class="c1">//Notice here, it calls the osd-&gt;store-&gt;op_wq.queue not osd-&gt;op_wq, and actually the io unit enqueue the osd-&gt;store-&gt;op_queue</span>
+</span><span class='line'><span class="n">ondisk_finisher</span><span class="p">.</span><span class="n">queue</span><span class="p">(</span><span class="n">ondisk</span><span class="p">);</span> <span class="c1">//wake up the Finisher::finisher_thread_entry() which calls C_OSD_OpCommit.finish() =&gt; pg-&gt;op_commit(repop);</span>
+</span><span class='line'>  <span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_disk</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">whoami</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_ack</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">whoami</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">eval_repop</span><span class="p">(</span><span class="n">repop</span><span class="p">);</span> <span class="c1">//check if this rep_op can send its commit and ack</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//Ok, Till now, Journal writing process is finished, the filestore write just begins.</span>
+</span><span class='line'><span class="c1">//Another thing is that, if we use btrfs, then in function queue_transactions, the write to journal and filestore will be parallel.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>FileStore::OpWQ</p>
+
+<div style="font-size:12px;  border: solid #999 1px; background-color: #eee; width:100%; overflow: scroll; padding:5px; white-space:nowrap;text-overflow:scroll;">
+
+</div>
+
+
+
+
+<figure class='code'><figcaption><span>FileStore::OpWQ</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">store</span><span class="o">-&gt;</span><span class="n">_do_op</span><span class="p">(</span><span class="n">osr</span><span class="p">,</span> <span class="n">handle</span><span class="p">);</span> <span class="c1">//ThreadPool::worker wq-&gt;_void_process(item, tp_handle);</span>
+</span><span class='line'><span class="n">_do_transactions</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">tls</span><span class="p">,</span> <span class="n">o</span><span class="o">-&gt;</span><span class="n">op</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">handle</span><span class="p">);</span>
+</span><span class='line'><span class="n">_do_transaction</span><span class="p">(</span><span class="o">**</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">tls</span><span class="o">-&gt;</span><span class="n">begin</span><span class="p">),</span> <span class="n">op_seq</span><span class="p">,</span> <span class="n">trans_num</span><span class="p">,</span> <span class="n">handle</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">switch</span><span class="p">(</span><span class="n">op</span><span class="p">)</span> <span class="k">case</span> <span class="n">Transaction</span>:<span class="o">:</span><span class="n">OP_WRITE</span><span class="o">:</span>
+</span><span class='line'>      <span class="n">decode</span> <span class="n">cid</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">off</span><span class="p">,</span> <span class="n">len</span><span class="p">,</span> <span class="n">bl</span> <span class="n">from</span> <span class="n">osr</span><span class="o">-&gt;</span><span class="n">q</span><span class="o">-&gt;</span><span class="n">tls</span>
+</span><span class='line'>      <span class="n">r</span> <span class="o">=</span> <span class="n">_write</span><span class="p">(</span><span class="n">cid</span><span class="p">,</span> <span class="n">oid</span><span class="p">,</span> <span class="n">off</span><span class="p">,</span> <span class="n">len</span><span class="p">,</span> <span class="n">bl</span><span class="p">,</span> <span class="n">replica</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">FileStore</span><span class="o">::</span><span class="n">_write</span><span class="p">(...)</span> <span class="o">=&gt;</span> <span class="n">writev</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">store</span><span class="o">-&gt;</span><span class="n">_do_op</span><span class="p">(</span><span class="n">osr</span><span class="p">,</span> <span class="n">handle</span><span class="p">);</span> <span class="c1">//ThreadPool::worker wq-&gt;_void_process_finish(item);</span>
+</span><span class='line'><span class="n">store</span><span class="o">-&gt;</span><span class="n">_finish_op</span><span class="p">(</span><span class="n">osr</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">onreadable_sync</span><span class="p">)</span> <span class="n">o</span><span class="o">-&gt;</span><span class="n">onreadable_sync</span><span class="o">-&gt;</span><span class="n">complete</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="c1">//C_OSD_OndiskWriteUnlock.finish()</span>
+</span><span class='line'>  <span class="n">op_finisher</span><span class="p">.</span><span class="n">queue</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">onreadable</span><span class="p">);</span> <span class="c1">// wake up the Finisher::finisher_thread_entry() and C_OSD_OpApplied.finish() =&gt; pg-&gt;op_applied(repop);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">pg</span><span class="o">-&gt;</span><span class="n">op_applied</span><span class="p">(</span><span class="n">repop</span><span class="p">)</span>
+</span><span class='line'>  <span class="n">repop</span><span class="o">-&gt;</span><span class="n">applying</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">repop</span><span class="o">-&gt;</span><span class="n">applied</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">repop</span><span class="o">-&gt;</span><span class="n">waitfor_ack</span><span class="p">.</span><span class="n">erase</span><span class="p">(</span><span class="n">whoami</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">eval_repop</span><span class="p">(</span><span class="n">repop</span><span class="p">);</span> <span class="c1">//check if this rep_op can send its commit and ack</span>
+</span><span class='line'>  
+</span></code></pre></td></tr></table></div></figure>
+
 ]]></content>
   </entry>
   
