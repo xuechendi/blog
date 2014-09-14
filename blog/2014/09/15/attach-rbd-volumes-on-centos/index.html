@@ -1,0 +1,378 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Attach RBD volumes on CentOS - XueChendi</title>
+  <meta name="author" content="Chendi.Xue">
+
+  
+  <meta name="description" content="Last Friday, I was pretty struggling in attaching rbd volume by CentOS libvirt, so just wanna to record the right steps and also talk about my may of &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xuechendi.github.io/blog/2014/09/15/attach-rbd-volumes-on-centos">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="XueChendi" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+
+<body>
+	<div class="container">
+		<aside class="left">
+			<div class="inner-left">
+				<header>
+					<img src="/xuechendi.jpg?s=200" alt="Gravatar of Chendi.Xue " title="Gravatar of Chendi.Xue" class="profilepic" />
+<hgroup>
+  <h1><a href="/">XueChendi</a></h1>
+  
+    <h2 class="subtitle">Keep Simple, Keep Effecient</h2>
+   
+</hgroup>
+
+
+				</header>
+				<footer>
+					<p>
+	<a href="https://facebook.com/xuechendi" class="btn btn-dark">Facebook</a>
+	<a href="http://cn.linkedin.com/pub/chendi-xue/5b/935/b36/" class="btn btn-dark">Linkedin</a>
+</p>
+
+				</footer>
+			</div>
+		</aside>
+    	<section class="right">
+    		<div class="inner-right">
+                        <nav role="navigation">
+                                <ul class="subscription" data-subscription="rss">
+  <li class="rss"><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:xuechendi.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/#posts">About Me</a></li>
+  <li><a href="/blog/2013/11/14/resume/">Resume</a></li>
+  <li><a href="/blog/archives">Blog</a></li>
+</ul>
+
+
+                        </nav>
+    			<div id="posts">
+    			  	<article class="post">
+    
+  <header>
+    
+      <h1 class="entry-title">Attach RBD Volumes on CentOS</h1>
+    
+    
+      <p class="meta">
+        <!--
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-09-15T02:23:00+08:00" pubdate data-updated="true">Sep 15<span>th</span>, 2014</time>-->
+        <!--
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://xuechendi.github.io">Comments</a>
+        -->
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Last Friday, I was pretty struggling in attaching rbd volume by CentOS libvirt, so just wanna to record the right steps and also talk about my may of troubleshooting</p>
+
+<h3>1. Check your qemu-kvm supported-format</h3>
+
+<h3>2. Attach volume when auth_supported = cephx</h3>
+
+<h3>3. Trouble shooting suggestions</h3>
+
+<h3>1. Check your qemu-kvm supported-format</h3>
+
+<p>When I firsted encoutered the error of unable to attach rbd volume, error is looks like below</p>
+
+<figure class='code'><figcaption><span>error</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@client03 vdbs]# virsh attach-device vclient01 vclient01.xml </span>
+</span><span class='line'><span class="go">error: Failed to attach device from vclient01.xml</span>
+</span><span class='line'><span class="go">error: internal error unable to execute QEMU command &#39;__com.redhat_drive_add&#39;: Device &#39;drive-virtio-disk1&#39; could not be initialized</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First thought pops up is &ldquo;qemu driver?&rdquo;
+So how to check if my libvirt version can support rbd?</p>
+
+<ol>
+<li>create a vm without rbd volume and lsof the vm pid to see which qemu-kvm it is calling( I found when using ubuntu , it calls kvm not qemu-kvm )</li>
+</ol>
+
+
+<figure class='code'><figcaption><span>error</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@client03]virsh create vclient.xml</span>
+</span><span class='line'><span class="go">Domain vclient created from vclient.xml</span>
+</span><span class='line'>
+</span><span class='line'><span class="gp">[root@client03]pid=`ps aux | grep vdlient | awk &#39;{print $</span>2<span class="o">}</span><span class="err">&#39;</span><span class="sb">`</span>
+</span><span class='line'><span class="gp">[root@client03]lsof -p $</span>pid
+</span><span class='line'><span class="go">[root@client03 vdbs]# lsof -p 125681 | grep kvm</span>
+</span><span class='line'><span class="go">qemu-kvm 125681 qemu  cwd    DIR              253,0       4096      2 /</span>
+</span><span class='line'><span class="go">qemu-kvm 125681 qemu  rtd    DIR              253,0       4096      2 /</span>
+</span><span class='line'><span class="go">qemu-kvm 125681 qemu  txt    REG              253,0   52636261   5820 /usr/libexec/qemu-kvm</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then you know which qemu-kvm it is calling, and just check the supported format</p>
+
+<figure class='code'><figcaption><span>error</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@client03]# /usr/libexec/qemu-kvm --drive format=?</span>
+</span><span class='line'><span class="go">Supported formats: raw cow qcow vdi vmdk cloop dmg bochs vpc vvfat qcow2 qed vhdx parallels nbd blkdebug host_cdrom host_floppy host_device file gluster gluster gluster gluster rbd</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>OK, my qemu-kvm can support rbd, which is great</p>
+
+<p>If your qemu-kvm can not support ceph, you can download a ceph patched qemu-kvm from here
+<a href="http://ceph.com/packages/ceph-extras/rpm/">http://ceph.com/packages/ceph-extras/rpm/</a></p>
+
+<figure class='code'><figcaption><span>error</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="gp">#</span>first checking your own qemu version
+</span><span class='line'><span class="go">[root@client03]# rpm -qa | grep qemu</span>
+</span><span class='line'><span class="go">qemu-img-0.12.1.2-2.415.el6.x86_64</span>
+</span><span class='line'><span class="go">qemu-kvm-0.12.1.2-2.415.el6.x86_64</span>
+</span><span class='line'>
+</span><span class='line'><span class="gp">#</span><span class="k">then </span>download the corresponding ceph patched version and install
+</span><span class='line'><span class="go">[root@client03]# rpm --oldpackage -Uvh qemu-kvm-0.12.1.2-2.415.el6.3ceph.x86_64 qemu-img-0.12.1.2-2.415.el6.3ceph.x86_64</span>
+</span><span class='line'>
+</span><span class='line'><span class="gp">#</span>check
+</span><span class='line'><span class="go">[root@client03 vdbs]# rpm -qa | grep qemu</span>
+</span><span class='line'><span class="go">qemu-img-0.12.1.2-2.415.el6.3ceph.x86_64</span>
+</span><span class='line'><span class="go">qemu-kvm-0.12.1.2-2.415.el6.3ceph.x86_64</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>2. Attach volumes when auth_supported = cephx</h3>
+
+<p>After upgrading qemu to support ceph, I still get the same error, a friend of mine suggested me to add my rbd disk xml into vm xml, so I can get some other debug logs</p>
+
+<figure class='code'><figcaption><span>error</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@client03 ~]# virsh create /opt/vmxml/vclient01.xml </span>
+</span><span class='line'><span class="go">error: Failed to create domain from /opt/vmxml/vclient01.xml</span>
+</span><span class='line'><span class="go">error: internal error Process exited while reading console log output: char device redirected to /dev/pts/2</span>
+</span><span class='line'><span class="go">qemu-kvm: -drive file=rbd:rbd/volume-1:auth_supported=none,if=none,id=drive-virtio-disk1,format=raw,serial=009ad738-1a2e-4d9c-bf22-1993c8c67ade: error connecting</span>
+</span><span class='line'><span class="go">qemu-kvm: -drive file=rbd:rbd/volume-1:auth_supported=none,if=none,id=drive-virtio-disk1,format=raw,serial=009ad738-1a2e-4d9c-bf22-1993c8c67ade: could not open disk image rbd:rbd/volume-1:auth_supported=none: Operation not supported</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here is it, it says I can not open disk image, why there is some auth_supported setting tails my rbd volume, I did not set this in my vm xml
+So it&rsquo;s easy to tell when I set no auth in libvirt, it will defaultly tail &lsquo;auth_supported=none&rsquo;. That is what causing me unable to open the rbd image.</p>
+
+<p>What to do? Add the auth to libvirt and disk.xml</p>
+
+<figure class='code'><figcaption><span>error</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">[root@client03 ~]# ceph auth get-or-create client.admin mon &#39;allow *&#39; osd &#39;allow *&#39; -o /etc/ceph/ceph.client.admin.keyring</span>
+</span><span class='line'><span class="go">[root@client03 ~]# cat /etc/ceph/ceph.client.admin.keyring </span>
+</span><span class='line'><span class="go">[client.admin]</span>
+</span><span class='line'><span class="go"> key = AQDzMfRTOA1kMxAAtkzqOeuamZP/Bl8IYrf4ug==</span>
+</span><span class='line'><span class="gp">[root@client03 ~]# ceph_cluster_uuid=`ceph -s | grep cluster | awk &#39;{print $</span>2<span class="o">}</span><span class="err">&#39;</span><span class="sb">`</span>
+</span><span class='line'><span class="go">[root@client03 ~]# cat &gt; secret.xml &lt;&lt;EOF</span>
+</span><span class='line'><span class="gp">&gt;</span> &lt;secret <span class="nv">ephemeral</span><span class="o">=</span><span class="s1">&#39;no&#39;</span> <span class="nv">private</span><span class="o">=</span><span class="s1">&#39;no&#39;</span>&gt;
+</span><span class='line'><span class="gp">&gt;</span>   &lt;uuid&gt;<span class="nv">$ceph_cluster_uuid</span>&lt;/uuid&gt;
+</span><span class='line'><span class="gp">&gt;</span>   &lt;usage <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;ceph&#39;</span>&gt;
+</span><span class='line'><span class="gp">&gt;</span>     &lt;name&gt;client.admin secret&lt;/name&gt;
+</span><span class='line'><span class="gp">&gt;</span>   &lt;/usage&gt;
+</span><span class='line'><span class="gp">&gt;</span> &lt;/secret&gt;
+</span><span class='line'><span class="gp">&gt;</span> EOF
+</span><span class='line'><span class="go">[root@client03 ~]# virsh secret-define --file secret.xml</span>
+</span><span class='line'><span class="go">Secret b535f448-46f5-4350-b5d9-1b648b5a09e3 created</span>
+</span><span class='line'><span class="go">[root@client03 ~]# virsh secret-set-value b535f448-46f5-4350-b5d9-1b648b5a09e3 AQDzMfRTOA1kMxAAtkzqOeuamZP/Bl8IYrf4ug==</span>
+</span><span class='line'><span class="go">Secret value set</span>
+</span><span class='line'>
+</span><span class='line'><span class="go">[root@client03 vdbs]# cat vclient01.xml </span>
+</span><span class='line'><span class="go">&lt;disk type=&#39;network&#39; device=&#39;disk&#39;&gt;</span>
+</span><span class='line'><span class="go">    &lt;driver name=&#39;qemu&#39; type=&#39;raw&#39;/&gt;</span>
+</span><span class='line'><span class="go">    &lt;auth username=&#39;admin&#39;&gt;</span>
+</span><span class='line'><span class="go">        &lt;secret type=&#39;ceph&#39; uuid=&#39;b535f448-46f5-4350-b5d9-1b648b5a09e3&#39;/&gt;</span>
+</span><span class='line'><span class="go">    &lt;/auth&gt;</span>
+</span><span class='line'><span class="go">    &lt;source protocol=&#39;rbd&#39; name=&#39;rbd/volume-1&#39; /&gt;</span>
+</span><span class='line'><span class="go">    &lt;target dev=&#39;vdb&#39; bus=&#39;virtio&#39;/&gt;</span>
+</span><span class='line'><span class="go">    &lt;serial&gt;009ad738-1a2e-4d9c-bf22-1993c8c67ade&lt;/serial&gt;</span>
+</span><span class='line'><span class="go">    &lt;address type=&#39;pci&#39; domain=&#39;0x0000&#39; bus=&#39;0x00&#39; slot=&#39;0x06&#39; function=&#39;0x0&#39;/&gt;</span>
+</span><span class='line'><span class="go">&lt;/disk&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now you can attach rbd volume successfully</p>
+
+<h3>3. Trouble shooting suggestions</h3>
+
+<p>For libvirt is like a wrapper, and it calls qemu-kvm in RH distribution and kvm in UBUNTU/DEBIAN distribution, when you failed in using libvirt to create vm,  you can try to use qemu-kvm
+It&rsquo;s like libvirt will translate the vm xml into qemu-kvm command, like in my settup, the qemu-kvm calls</p>
+
+<figure class='code'><figcaption><span>error</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='console'><span class='line'><span class="go">/usr/libexec/qemu-kvm -name vclient01 -S -M rhel6.5.0 -cpu SandyBridge,+erms,+smep,+fsgsbase,+pdpe1gb,+rdrand,+f16c,+osxsave,+dca,+pcid,+pdcm,+xtpr,+tm2,+est,+smx,+vmx,+ds_cpl,+monitor,+dtes64,+pbe,+tm,+ht,+ss,+acpi,+ds,+vme -enable-kvm -m 512 -realtime mlock=off -smp 1,sockets=1,cores=1,threads=1 -uuid d2ae09f2-8b6e-7781-acb3-2dfa1ef18e13 -nodefconfig -nodefaults -chardev socket,id=charmonitor,path=/var/lib/libvirt/qemu/vclient01.monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=control -rtc base=utc,driftfix=slew -no-kvm-pit-reinjection -no-shutdown -device piix3-usb-uhci,id=usb,bus=pci.0,addr=0x1.0x2 -drive file=/opt/image/vclient01.img,if=none,id=drive-virtio-disk0,format=raw,cache=none -device virtio-blk-pci,scsi=off,bus=pci.0,addr=0x4,drive=drive-virtio-disk0,id=virtio-disk0,bootindex=1 -drive file=rbd:rbd/volume-1,if=none,id=drive-virtio-disk1,format=raw,serial=009ad738-1a2e-4d9c-bf22-1993c8c67ade -device virtio-blk-pci,scsi=off,bus=pci.0,addr=0x6,drive=drive-virtio-disk1,id=virtio-disk1 -chardev pty,id=charserial0 -device isa-serial,chardev=charserial0,id=serial0 -device usb-tablet,id=input0 -vnc 0.0.0.0:0 -k en-us -vga cirrus -device virtio-balloon-pci,id=balloon0,bus=pci.0,addr=0x5</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So using qemu-kvm, you can do some parameter changes to test and troubleshoot</p>
+
+<p>OK, THAT&rsquo;S ALL</p>
+</div>
+
+
+</article>
+
+
+        <div class="sharing">
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+
+
+
+<section id="comments">
+    <div id="disqus_thread"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+</section>
+
+
+    			</div>
+    			<footer id="footer">
+    				<p class="credit">
+  Copyright &copy; 2014 - Chendi.Xue. Powered by <a href="http://octopress.org">Octopress</a>
+</p>
+
+
+    			</footer>
+    			
+
+<script type="text/javascript">
+      var disqus_shortname = 'XueChendi';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://xuechendi.github.io/blog/2014/09/15/attach-rbd-volumes-on-centos/';
+        var disqus_url = 'http://xuechendi.github.io/blog/2014/09/15/attach-rbd-volumes-on-centos/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id; js.async = true;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+
+
+
+<link href='http://fonts.googleapis.com/css?family=Quattrocento+Sans|Roboto:400,300' rel='stylesheet' type='text/css'>
+
+
+
+
+
+    		</div>
+    	</section>
+  	</div>
+</body>
+</html>
