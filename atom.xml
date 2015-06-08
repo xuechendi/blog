@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2015-06-09T03:19:56+08:00</updated>
+  <updated>2015-06-09T03:26:31+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -18,7 +18,7 @@
     <link href="http://xuechendi.github.io/blog/2015/06/09/cetune/"/>
     <updated>2015-06-09T03:01:00+08:00</updated>
     <id>http://xuechendi.github.io/blog/2015/06/09/cetune</id>
-    <content type="html"><![CDATA[<p><img src="http://xuechendi.github.io/images/CeTune.png" alt="cetune_visualizer" /></p>
+    <content type="html"><![CDATA[<p><img src="http://xuechendi.github.io/images/cetune/CeTune.png" alt="cetune_visualizer" /></p>
 ]]></content>
   </entry>
   
