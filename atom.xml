@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2015-06-09T03:26:31+08:00</updated>
+  <updated>2015-06-09T11:33:42+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -12,6 +12,72 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[flashcache dmsetup args]]></title>
+    <link href="http://xuechendi.github.io/blog/2015/06/09/flashcache-dmsetup-args/"/>
+    <updated>2015-06-09T11:21:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2015/06/09/flashcache-dmsetup-args</id>
+    <content type="html"><![CDATA[<p>When using flashcache, there is a toolkit name flashcache_utils(flashcache, flashcache_create, flashcache_load, etc&hellip;)
+But somehow, I am just unlucky to run into some strange flashcache util error, so Th nice walk around would be using raw dmsetup cmd.</p>
+
+<p>The solution:
+<code>echo 0 1953525168 flashcache /dev/sdb /dev/sdc cachedev 1 2 8 4194304 | dmsetup create cachedev</code></p>
+
+<p>below is the description of above args
+<code>0 [disk dev sz in sectors] flashcache [disk dev] [ssd dev] [dm virtual name] [cache mode] [flashcache cmd] [blksize in sectors] [size of cache in sectors] [cache set size] | dmsetup create [dm virtual name]</code></p>
+
+<p>root@ssdosd5:~# dmsetup info</p>
+
+<pre><code>Name:              cachedev
+State:             ACTIVE
+Read Ahead:        256
+Tables present:    LIVE
+Open count:        0
+Event number:      0
+Major, minor:      252, 0
+Number of targets: 1
+</code></pre>
+
+<p>root@ssdosd5:~# ll /dev/mapper/cachedev</p>
+
+<pre><code>lrwxrwxrwx 1 root root 7 Jun  9 11:53 /dev/mapper/cachedev -&gt; ../dm-0
+</code></pre>
+
+<hr>
+
+
+<p>How I troubleshooting on this:</p>
+
+<p>root@ssdosd5:~# flashcache_create -p back -b 4k cachedev /dev/sdc /dev/sdb</p>
+
+<pre><code>cachedev cachedev, ssd_devname /dev/sdc, disk_devname /dev/sdb cache mode WRITE_BACK
+block_size 8, md_block_size 8, cache_size 0
+Flashcache metadata will use 2049MB of your 53239MB main memory
+device-mapper: reload ioctl on cachedev failed: Invalid argument
+Command failed
+echo 0 1953525168 flashcache /dev/sdb /dev/sdc cachedev 1 2 8 0 512 140733193388032 0 8 | dmsetup create cachedev failed
+</code></pre>
+
+<p>When this fail happened, go to dmesg firstly
+root@ssdosd5:~# dmesg | tail</p>
+
+<pre><code>[11250.039952] Invalid Disk Assoc assoc 512 disk_assoc 0 size 781422768
+[11250.175608] device-mapper: table: 252:0: flashcache: flashcache: Invalid disk associativity
+[11250.311990] device-mapper: ioctl: error adding target to table
+</code></pre>
+
+<p>After googling the keywork, nothing useful to me, but I noticed one thing, our flashcache version is kind old, and lack of some parameter
+So, what if the flashcache util is not match flashcache dm module??</p>
+
+<p>Based on that assumption, I just gave up on using flashcache util and move on to modify raw dmsetup cmd.
+After struggle googling, I found the flashcache guide told us how it invoke dmsetup</p>
+
+<p><a href="https://github.com/facebook/flashcache/blob/master/doc/flashcache-sa-guide.txt">flashcache_guide</a></p>
+
+<p>So I just follow the guide to change our dmsetup cmd, and it went well</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[CeTune]]></title>
@@ -1847,15 +1913,6 @@ Queue will send out all requests, then wait the last request completes . After t
 <p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/5.png" alt="proving" /></p>
 
 <p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/6.png" alt="proving" /></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[How to break into Ceph Codes]]></title>
-    <link href="http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes/"/>
-    <updated>2013-11-15T01:00:00+08:00</updated>
-    <id>http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes</id>
-    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this weekend</p>
 ]]></content>
   </entry>
   
