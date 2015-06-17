@@ -4,7 +4,7 @@
   <title><![CDATA[XueChendi]]></title>
   <link href="http://xuechendi.github.io/atom.xml" rel="self"/>
   <link href="http://xuechendi.github.io/"/>
-  <updated>2015-06-09T11:33:42+08:00</updated>
+  <updated>2015-06-18T06:45:02+08:00</updated>
   <id>http://xuechendi.github.io/</id>
   <author>
     <name><![CDATA[Chendi.Xue]]></name>
@@ -76,15 +76,6 @@ After struggle googling, I found the flashcache guide told us how it invoke dmse
 <p><a href="https://github.com/facebook/flashcache/blob/master/doc/flashcache-sa-guide.txt">flashcache_guide</a></p>
 
 <p>So I just follow the guide to change our dmsetup cmd, and it went well</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[CeTune]]></title>
-    <link href="http://xuechendi.github.io/blog/2015/06/09/cetune/"/>
-    <updated>2015-06-09T03:01:00+08:00</updated>
-    <id>http://xuechendi.github.io/blog/2015/06/09/cetune</id>
-    <content type="html"><![CDATA[<p><img src="http://xuechendi.github.io/images/cetune/CeTune.png" alt="cetune_visualizer" /></p>
 ]]></content>
   </entry>
   
@@ -1913,6 +1904,15 @@ Queue will send out all requests, then wait the last request completes . After t
 <p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/5.png" alt="proving" /></p>
 
 <p><img src="http://xuechendi.github.io/images/AIO_vs_FIO/6.png" alt="proving" /></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[How to break into Ceph Codes]]></title>
+    <link href="http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes/"/>
+    <updated>2013-11-15T01:00:00+08:00</updated>
+    <id>http://xuechendi.github.io/blog/2013/11/15/how-to-break-into-ceph-codes</id>
+    <content type="html"><![CDATA[<p>Working in Progress, will be finished by this weekend</p>
 ]]></content>
   </entry>
   
